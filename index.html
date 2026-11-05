@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bram & Sari - Survival Evolution v2.3</title>
+<title>Bram & Sari - Survival Evolution v2.4</title>
 <style>
 :root{--bg:#0f1a14;--panel:#18271e;--ink:#e9f3ea;--mut:#9bb5a0;--line:#2c4534;--acc:#5fbf7a;--warn:#e5484d;color-scheme:dark}
 *{box-sizing:border-box}
@@ -542,21 +542,29 @@ function aksi() {
 }
 
 function finishGather() {
+  const gatheredItem = gather.kind === 'river' ? 'air' : (gather.kind === 'bush' ? 'makanan' : (NODE[gather.kind] && NODE[gather.kind].item));
+  if (!gatheredItem) { gather = { t: 0, kind: null, node: null }; return; }
+  if (!inventoryHasRoom()) {
+    if (gather.node) gather.node.cd = 0;
+    log('🎒 Tas penuh! Sari menunggu sampai ada ruang.');
+    gather = { t: 0, kind: null, node: null };
+    return;
+  }
   if (gather.kind === 'river') {
     inv.air++;
-    log('Dapat 1 Air.');
+    log('💧 Sari mengambil 1 Air.');
   } else {
     gather.node.cd = 25;
     if (gather.kind === 'bush') {
       inv.makanan++;
-      log('Dapat 1 Beri.');
+      log('🫐 Sari mengambil 1 Beri.');
     } else {
       const item = NODE[gather.kind].item;
       inv[item]++;
       if (skills.scavenger>0 && rnd()<skills.scavenger*0.12) { inv[item]++; log('🪓 Skill Pengumpul: bonus 1 '+ITEM[item]+'!'); }
       if (gather.kind === 'tree') quest.wood++;
       spawnBurst(gather.node.x, gather.node.y, 7, '#a8e6a1');
-      log(`Dapat 1 ${ITEM[item]}.`);
+      log(`✨ Sari mengambil 1 ${ITEM[item]}.`);
     }
   }
   gather = { t: 0, kind: null, node: null };
@@ -570,6 +578,12 @@ function useItem(k) {
   if (k === 'perban') { bram.hp = clamp(bram.hp + 30, 0, bram.maxHp); log('Bram memakai perban.'); }
   renderTas();
 }
+
+/* ===== KAPASITAS TAS v2.4 ===== */
+const INVENTORY_CAPACITY = 120;
+const INVENTORY_KEYS = ['kayu','batu','kulit','inti','kristal','makanan','air','perban'];
+function inventoryUsed(){return INVENTORY_KEYS.reduce((sum,k)=>sum+(Number(inv[k])||0),0);}
+function inventoryHasRoom(){return inventoryUsed()<INVENTORY_CAPACITY;}
 
 /* ===== MEJA KERJA ===== */
 const SKILL_DEFS=[{id:"power",name:"Petarung",icon:"⚔️",desc:"Serangan Bram +2 tiap tingkat."},{id:"guard",name:"Tangguh",icon:"🛡️",desc:"Damage masuk berkurang 8% tiap tingkat."},{id:"scavenger",name:"Pengumpul",icon:"🪓",desc:"Peluang bonus bahan saat mengumpulkan."}];
@@ -674,14 +688,19 @@ function renderTas() {
     `<button onclick="useItem('${k}')" ${(inv[k] || 0) <= 0 ? 'disabled' : ''}>${label}</button>`;
   const w = `${gun.icon} ${gun.name} · ${gun.damage} dmg`;
   const a = equip.armor ? `${equip.armor.icon} ${equip.armor.name} (-${Math.round(equip.armor.red * 100)}% dmg)` : 'Tanpa pelindung';
+  const used = inventoryUsed();
+  const pct = Math.min(100, used / INVENTORY_CAPACITY * 100);
   document.getElementById('tasBody').innerHTML = `
+    <div class="tas-sec">🎒 Isi Tas · ${used}/${INVENTORY_CAPACITY}</div>
+    <div style="height:9px;background:#2c4534;border-radius:9px;overflow:hidden;margin:6px 0 10px"><div style="height:100%;width:${pct}%;background:${pct>=90?'#e5b84d':'#5fbf7a'};border-radius:9px"></div></div>
+    <div class="memory-note">Sari otomatis mengambil sumber daya di sekitar Bram. Pengumpulan berhenti saat tas penuh.</div>
     <div class="tas-sec">Bram</div>
     <div class="tas-row"><span>Level</span><span>${bram.lvl}</span></div>
     <div class="tas-row"><span>HP</span><span>${Math.round(bram.hp)} / ${bram.maxHp}</span></div>
     <div class="tas-row"><span>Serangan total</span><span>${totalAtk()}</span></div>
     <div class="tas-row"><span>XP</span><span>${bram.xp} / ${bram.lvl * 25}</span></div>
     <div class="tas-sec">Perlengkapan</div>
-    <div class="tas-row"><span>Senjata Bram</span><span>${w}</span></div><div class="tas-row"><span>Peluru</span><span>${inv.peluru||0}</span></div><div class="tas-row"><span>Koin</span><span>${inv.koin||0}</span></div>
+    <div class="tas-row"><span>Senjata Bram</span><span>${w}</span></div><div class="tas-row"><span>Peluru</span><span>♾️ Unlimited</span></div><div class="tas-row"><span>Koin</span><span>${inv.koin||0}</span></div>
     <div class="tas-row"><span>Baju</span><span>${a}</span></div>
     <div class="tas-sec">Sari (companion)</div>
     <div class="tas-row"><span>Serangan</span><span>${Math.round(totalAtk() / 2)} · immortal</span></div>
@@ -1008,7 +1027,7 @@ function update(dt) {
   // Ambil sumber daya: Sari otomatis memungut node dalam radius dekat Bram.
   for (const n of nodes) if (n.cd > 0) n.cd -= dt;
   sariGatherCd=Math.max(0,sariGatherCd-dt);
-  if(sariGatherCd<=0&&!gameOver){const nearbyNode=nodes.filter(n=>n.cd<=0&&dist(n,bram)<=88).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];if(nearbyNode){gather={t:0,kind:nearbyNode.kind,node:nearbyNode};finishGather();sariGatherCd=1.8;}}
+  if(sariGatherCd<=0&&!gameOver){if(!inventoryHasRoom()){sariGatherCd=4;}else{const nearbyNode=nodes.filter(n=>n.cd<=0&&dist(n,bram)<=88).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];if(nearbyNode){gather={t:0,kind:nearbyNode.kind,node:nearbyNode};finishGather();sariGatherCd=1.8;}}}
   if (gather.t > 0) {
     if (nearbyMonsters(bram, 150).length) {
       gather = { t: 0, kind: null, node: null };
@@ -1242,7 +1261,7 @@ function renderHud() {
   document.getElementById('aksiTxt').textContent = gather.t > 0 ? `${gather.t.toFixed(1)}s` : aksiLabel();
 
   document.getElementById('inv').textContent =
-    `🔫 ${gun.name} · ♾️ Peluru · 🪙 ${inv.koin||0} · 🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
+    `🎒 Tas ${inventoryUsed()}/${INVENTORY_CAPACITY} · 🔫 ${gun.name} · ♾️ Peluru · 🪙 ${inv.koin||0} · 🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
 
   if (craftOpen) renderCraft();
   if(document.getElementById("merchant").classList.contains("show"))renderMerchant();
