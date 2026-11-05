@@ -886,7 +886,7 @@ function loadGame(showMessage=false) {
     if(d.storage) Object.assign(storage,d.storage);
     if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
     dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
-    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};inv.peluru=inv.peluru||0;inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
+    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};if(typeof inv.peluru!=='number')inv.peluru=60;inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
