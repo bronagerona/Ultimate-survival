@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bram & Sari - Survival Open World</title>
+<style>
+:root{--bg:#0f1a14;--panel:#18271e;--ink:#e9f3ea;--mut:#9bb5a0;--line:#2c4534;--acc:#5fbf7a;--warn:#e5484d;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo 2",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.app{max-width:480px;margin:0 auto;padding:10px 12px 28px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.top h1{font-size:20px;margin:0;color:#b8f0c4}
+#clock{font-size:13px;color:var(--mut)}
+.server-bar{display:flex;gap:6px;margin-bottom:4px}
+.server-bar input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:var(--ink);font:inherit;font-size:13px;-webkit-user-select:text;user-select:text}
+.server-bar button{background:var(--acc);color:#0b1a10;border:0;border-radius:8px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer}
+#aiStatus{font-size:12px;color:var(--mut);margin-bottom:8px}
+#world{position:relative;width:100%;height:380px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#000}
+#cv{display:block;width:100%;height:100%}
+#hint{position:absolute;left:10px;top:8px;background:rgba(0,0,0,.5);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;pointer-events:none}
+#joy{position:absolute;left:14px;bottom:14px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);touch-action:none}
+#knob{position:absolute;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.5);left:33px;top:33px;pointer-events:none}
+#btnAksi{position:absolute;right:14px;bottom:14px;width:96px;height:96px;border-radius:50%;background:rgba(60,120,80,.75);border:2px solid rgba(255,255,255,.45);color:#fff;font-size:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer;z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+#btnAksi:active,#btnDodge:active{transform:scale(.94)}
+#btnDodge{position:absolute;right:118px;bottom:25px;width:62px;height:62px;border-radius:50%;background:rgba(45,100,160,.82);border:2px solid rgba(255,255,255,.45);color:#fff;font-size:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:manipulation;z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+#btnDodge span{font-size:10px;font-weight:700}
+#btnDodge:disabled{opacity:.4}
+.quickbar{display:flex;gap:6px;margin:5px 0}
+.quickbar button{flex:1;background:#294634;color:#e9f3ea;border:1px solid #52785d;border-radius:9px;padding:7px 4px;font:inherit;font-size:12px;font-weight:700}
+.quest-panel{padding:8px 10px;font-size:12px}
+.quest-panel b{color:#b8f0c4}
+.quest-track{height:6px;background:#2c4534;border-radius:9px;margin-top:6px;overflow:hidden}
+.quest-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#57b9ff,#9ce7ff);transition:width .25s}
+.quest-panel.hidden{display:none}
+#btnAksi:disabled{opacity:.5}
+#btnAksi span{font-size:11px;font-weight:700;margin-top:2px;max-width:88px;text-align:center;line-height:1.1}
+#btnTas{position:absolute;right:14px;top:10px;width:46px;height:46px;border-radius:12px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.3);font-size:22px;color:#fff;cursor:pointer;z-index:4}
+#sbub{position:absolute;background:#fff;color:#1b2b20;font-size:12px;font-weight:700;padding:5px 9px;border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;transform:translate(-50%,-100%);max-width:180px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#sbub.show{opacity:1}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-top:8px}
+.nrow{display:grid;grid-template-columns:78px 1fr 40px;align-items:center;gap:6px;margin-top:5px;font-size:13px}
+.nbar{height:9px;border-radius:99px;background:var(--line);overflow:hidden}
+.nbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2f9e6b,#6fe0a0);transition:width .3s}
+.nbar i.low{background:linear-gradient(90deg,#c0392b,#ff6b6b)}
+.nbar i.fear{background:linear-gradient(90deg,#8a6d1d,#e5b84d)}
+.nbar i.fear.high{background:linear-gradient(90deg,#a33,#ff6b6b)}
+.nbar i.xp{background:linear-gradient(90deg,#3a6fb0,#7fb6ff)}
+.nval{text-align:right;color:var(--mut);font-size:12px}
+#inv{font-size:13px;color:var(--mut);margin-top:8px;text-align:center}
+#log{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;font-size:12.5px;line-height:1.5;max-height:180px;overflow-y:auto;margin-top:8px}
+.craft{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+.craft.show{display:flex}
+.craft-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;width:100%;max-width:360px;max-height:85vh;overflow-y:auto}
+.craft-box h3{margin:0 0 8px}
+.rbtn{display:block;width:100%;margin-top:6px;background:#262f55;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px;font:inherit;text-align:left;cursor:pointer}
+.rbtn:disabled{opacity:.45}
+.rbtn small{display:block;color:var(--mut);font-size:11px}
+.rbtn.up{background:#2a4a33;border-color:var(--acc)}
+.craft-close{width:100%;margin-top:10px;background:var(--acc);color:#0b1a10;border:0;border-radius:10px;padding:10px;font:inherit;font-weight:700;cursor:pointer}
+.tas-sec{font-size:13px;color:var(--mut);margin:10px 0 4px}
+.tas-row{display:flex;justify-content:space-between;align-items:center;background:#22402c;border-radius:10px;padding:8px 10px;margin-top:5px;font-size:14px}
+.tas-row button{background:var(--acc);color:#0b1a10;border:0;border-radius:8px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer}
+.tas-row button:disabled{opacity:.4}
+#over{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.over-box{background:var(--panel);border:1px solid var(--warn);border-radius:16px;padding:20px;text-align:center;max-width:320px}
+.over-box h2{margin:0 0 8px;color:#ff8a8a}
+.over-box p{color:var(--mut);font-size:14px}
+.over-box button{background:var(--acc);color:#0b1a10;border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>🌲 Bram & Sari</h1>
+    <span id="clock"></span>
+  </div>
+
+  <div class="server-bar">
+    <input type="text" id="serverUrl" value="http://127.0.0.1:11434" placeholder="URL Server AI">
+    <button onclick="testAI()">Tes</button>
+  </div>
+  <div id="aiStatus">Status AI: Belum teruji</div>
+  <div class="quickbar">
+    <button onclick="saveGame(true)">💾 Simpan</button>
+    <button onclick="loadGame(true)">📂 Muat</button>
+    <button onclick="toggleQuest()">📜 Misi</button>
+  </div>
+  <div id="questPanel" class="panel quest-panel">
+    <b>📜 Misi Bertahan Hidup</b>
+    <div id="questText">Kumpulkan 5 kayu dan kalahkan 3 monster.</div>
+    <div class="quest-track"><i id="questBar"></i></div>
+  </div>
+
+  <div id="world">
+    <canvas id="cv"></canvas>
+    <div id="hint"></div>
+    <div id="sbub"></div>
+    <div id="joy"><div id="knob"></div></div>
+    <button id="btnTas" onclick="openTas()">🎒</button>
+    <button id="btnDodge" onclick="dodge()">💨<span>Hindar</span></button>
+    <button id="btnAksi" onclick="aksi()">⚔️<span id="aksiTxt">Aksi</span></button>
+  </div>
+
+  <div class="panel">
+    <div class="nrow"><span>❤️ HP</span><div class="nbar"><i id="nb-hp"></i></div><span class="nval" id="nv-hp"></span></div>
+    <div class="nrow"><span>🍲 Lapar</span><div class="nbar"><i id="nb-lapar"></i></div><span class="nval" id="nv-lapar"></span></div>
+    <div class="nrow"><span>💧 Haus</span><div class="nbar"><i id="nb-haus"></i></div><span class="nval" id="nv-haus"></span></div>
+    <div class="nrow"><span>⚡ Energi</span><div class="nbar"><i id="nb-energi"></i></div><span class="nval" id="nv-energi"></span></div>
+    <div class="nrow"><span>😨 Takut</span><div class="nbar"><i id="nb-takut" class="fear"></i></div><span class="nval" id="nv-takut"></span></div>
+    <div class="nrow"><span>⭐ XP</span><div class="nbar"><i id="nb-xp" class="xp"></i></div><span class="nval" id="nv-xp"></span></div>
+    <div style="font-size:13px;color:var(--mut);margin-top:6px" id="lvlTxt"></div>
+  </div>
+
+  <div id="inv"></div>
+  <div id="log"></div>
+</div>
+
+<div id="craft" class="craft">
+  <div class="craft-box">
+    <h3>🔨 Meja Kerja</h3>
+    <div id="craftList"></div>
+    <button class="craft-close" onclick="closeCraft()">Tutup</button>
+  </div>
+</div>
+
+<div id="tas" class="craft">
+  <div class="craft-box">
+    <h3>🎒 Karakter & Tas</h3>
+    <div id="tasBody"></div>
+    <button class="craft-close" onclick="closeTas()">Tutup</button>
+  </div>
+</div>
+
+<div id="over">
+  <div class="over-box">
+    <h2>Bram tumbang</h2>
+    <p>Sari masih berdiri di sampingmu. Coba lagi?</p>
+    <button onclick="newGame()">Mulai dunia baru</button>
+  </div>
+</div>
+
+<script>
+/* ===== KONEKSI (sama dengan Rumah Mungil) ===== */
+function apiRoot() { return document.getElementById('serverUrl').value.trim().replace(/\/+$/, ''); }
+
+async function askLocalAI(messages) {
+  const res = await fetch(apiRoot() + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'default',
+      messages: messages,
+      stream: false,
+      max_tokens: 40
+    })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+async function testAI() {
+  const st = document.getElementById('aiStatus');
+  st.textContent = "Menguji server AI...";
+  try {
+    const res = await fetch(apiRoot() + '/v1/models');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    st.textContent = "Terhubung ✓ Model: " + (d?.data?.[0]?.id || 'default');
+    st.style.color = "#5fbf7a";
+  } catch (e) {
+    st.textContent = "Gagal koneksi: " + e.message;
+    st.style.color = "#e5484d";
+  }
+}
+
+/* ===== UTIL ===== */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const rnd = Math.random;
+const ITEM = { kayu: 'Kayu', batu: 'Batu', kulit: 'Kulit', inti: 'Inti', makanan: 'Beri', air: 'Air', perban: 'Perban' };
+const BIOME_NAME = { camp: 'Kamp (aman)', forest: 'Hutan', river: 'Sungai', ruin: 'Reruntuhan', cave: 'Gua' };
+const BIOME_COL = { camp: '#6b5a3a', forest: '#2e5b34', river: '#23506b', ruin: '#4a4a52', cave: '#3d2b55' };
+
+/* ===== DUNIA ===== */
+const W = 2400, H = 2400;
+const CAMP = { x: 1200, y: 1200 };
+const CAMP_R = 180;
+const DAY_LEN = 120, NIGHT_AT = 70;
+
+function riverY(x) { return 1500 + 250 * Math.sin(x / 380); }
+
+function biomeAt(x, y) {
+  if (dist({ x, y }, CAMP) < CAMP_R) return 'camp';
+  if (Math.abs(y - riverY(x)) < 45) return 'river';
+  if (x > 1500 && y < 1000) return 'ruin';
+  if (x < 700 && y > 1700) return 'cave';
+  return 'forest';
+}
+
+// Generator acak deterministik supaya dunia sama setiap main
+function mulberry(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const worldRnd = mulberry(7);
+
+const NODE = {
+  tree:  { ic: '🌳', item: 'kayu',    t: 2.5, biome: 'forest', n: 90 },
+  bush:  { ic: '🫐', item: 'makanan', t: 2,   biome: 'forest', n: 50 },
+  rock:  { ic: '🪨', item: 'batu',    t: 3,   biome: 'cave',   n: 40 },
+  chest: { ic: '📦', item: 'perban',  t: 3,   biome: 'ruin',   n: 14 }
+};
+const ACT_NAME = { tree: 'Tebang pohon', bush: 'Petik beri', rock: 'Pecah batu', chest: 'Buka peti' };
+const nodes = [];
+for (const kind in NODE) {
+  let placed = 0, tries = 0;
+  while (placed < NODE[kind].n && tries < 5000) {
+    tries++;
+    const x = worldRnd() * W, y = worldRnd() * H;
+    if (biomeAt(x, y) === NODE[kind].biome) {
+      nodes.push({ kind, x, y, cd: 0 });
+      placed++;
+    }
+  }
+}
+
+const MON = {
+  forest: [{ n: 'Serigala', ic: '🐺', hp: 30, dmg: 3, xp: 10, sp: 50 }, { n: 'Babi hutan', ic: '🐗', hp: 20, dmg: 2, xp: 7, sp: 45 }],
+  river:  [{ n: 'Buaya kecil', ic: '🐊', hp: 40, dmg: 4, xp: 14, sp: 35 }],
+  ruin:   [{ n: 'Zombi', ic: '🧟', hp: 50, dmg: 5, xp: 18, sp: 30 }],
+  cave:   [{ n: 'Kelelawar', ic: '🦇', hp: 15, dmg: 2, xp: 6, sp: 70 }]
+};
+
+// Boss: muncul di titik tetap, hidup lagi 3 menit setelah dikalahkan
+const BOSS_DEFS = [
+  { key: 'golem', n: 'Penjaga Batu', ic: '🗿', hp: 300, dmg: 8, xp: 60, sp: 28, x: 1950, y: 450 },
+  { key: 'raja',  n: 'Raja Serigala', ic: '🐺', hp: 180, dmg: 7, xp: 50, sp: 55, x: 420,  y: 520 }
+];
+const bossTimer = { golem: 0, raja: 0 };
+
+/* ===== RESEP DAN PERLENGKAPAN ===== */
+const BENCH2_COST = { kayu: 6, batu: 4, kulit: 2 };
+const RECIPES = [
+  { id: 'tombak', name: 'Tombak', cost: { kayu: 3, batu: 2 }, desc: 'Senjata · ATK +3', bench: 1, slot: 'weapon',
+    item: { id: 'tombak', name: 'Tombak', icon: '🔱', atk: 3 } },
+  { id: 'parang', name: 'Parang Batu', cost: { kayu: 2, batu: 4, kulit: 1 }, desc: 'Senjata · ATK +5', bench: 2, slot: 'weapon',
+    item: { id: 'parang', name: 'Parang Batu', icon: '🗡️', atk: 5 } },
+  { id: 'tombakInti', name: 'Tombak Inti', cost: { kayu: 2, inti: 2 }, desc: 'Senjata · ATK +9', bench: 2, slot: 'weapon',
+    item: { id: 'tombakInti', name: 'Tombak Inti', icon: '⚔️', atk: 9 } },
+  { id: 'bajuKulit', name: 'Baju Kulit', cost: { kayu: 1, kulit: 3 }, desc: 'Pelindung · dmg musuh -20%', bench: 1, slot: 'armor',
+    item: { id: 'bajuKulit', name: 'Baju Kulit', icon: '🦺', red: 0.2 } },
+  { id: 'rompiBatu', name: 'Rompi Batu', cost: { batu: 6, kulit: 2 }, desc: 'Pelindung · dmg musuh -35%', bench: 2, slot: 'armor',
+    item: { id: 'rompiBatu', name: 'Rompi Batu', icon: '🛡️', red: 0.35 } },
+  { id: 'jubahInti', name: 'Jubah Inti', cost: { inti: 2, kulit: 3 }, desc: 'Pelindung · dmg musuh -50%', bench: 2, slot: 'armor',
+    item: { id: 'jubahInti', name: 'Jubah Inti', icon: '🧥', red: 0.5 } },
+  { id: 'perban', name: 'Perban', cost: { kayu: 1, makanan: 1 }, desc: 'Pemulihan HP', bench: 1, slot: null }
+];
+
+/* ===== STATE ===== */
+let day = 1, dayTime = 0;
+let bram = { x: CAMP.x + 30, y: CAMP.y, hp: 100, maxHp: 100, atk: 5, lvl: 1, xp: 0, cd: 0 };
+let sari = { x: CAMP.x - 30, y: CAMP.y, cd: 0 };
+let needs = { lapar: 80, haus: 80, energi: 90, takut: 10 };
+let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, makanan: 2, air: 2, perban: 1 };
+let equip = { weapon: null, armor: null };
+let bench = false, benchLvl = 0;
+let craftOpen = false;
+let mons = [];
+let monId = 0;
+let spawnTimer = 0;
+let fireLeft = 0;
+let gather = { t: 0, kind: null, node: null };
+let gameOver = false;
+let atkTarget = null;
+let jv = { x: 0, y: 0 };
+const keys = {};
+let flags = { night: false, lowHp: false, lapar: false, haus: false, takut: false, nearAlert: false, taunt: false };
+let lastCrowd = 0;
+
+function totalAtk() { return bram.atk + (equip.weapon ? equip.weapon.atk : 0); }
+function armorRed() { return equip.armor ? equip.armor.red : 0; }
+
+/* ===== SARI (companion, immortal, tanpa need) ===== */
+const BASE_SARI = 'Kamu Sari, companion Bram di hutan survival. Balas 1 kalimat pendek bahasa Indonesia gaul (maksimal 8 kata). Jangan pakai tanda kutip.';
+let pendingEv = null, sariBusy = false, lastSari = 0;
+const sariQueue = [];
+function sariEvent(ev) {
+  if (!ev) return;
+  if (sariQueue.length < 8 && sariQueue[sariQueue.length - 1] !== ev) sariQueue.push(String(ev));
+  pendingEv = sariQueue[0] || null;
+}
+
+function sariSystem() {
+  return BASE_SARI + (bram.hp < 40 || needs.takut > 70 ? ' Suaramu tegang.' : ' Suaramu tenang.');
+}
+
+async function sendSari() {
+  const ev = sariQueue.shift() || pendingEv;
+  pendingEv = sariQueue[0] || null;
+  if (!ev) return;
+  sariBusy = true;
+  lastSari = Date.now();
+  try {
+    const reply = await askLocalAI([
+      { role: 'system', content: sariSystem() },
+      { role: 'user', content: `Kejadian: ${ev}. Lokasi: ${BIOME_NAME[biomeAt(bram.x, bram.y)]}, ${isNight() ? 'malam' : 'siang'}.` }
+    ]);
+    const clean = reply.replace(/[\r\n]+/g, ' ').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+    if (clean) {
+      showSariBubble(clean);
+      log('👧 Sari: ' + clean);
+    }
+  } catch (e) {
+    console.log('Error Sari:', e);
+  } finally {
+    sariBusy = false;
+  }
+}
+
+function flushSari() {
+  if (!pendingEv && sariQueue.length) pendingEv = sariQueue[0];
+  if (pendingEv && !sariBusy && Date.now() - lastSari > 6500) sendSari();
+}
+
+let bubbleTimer = null;
+function showSariBubble(text) {
+  const b = document.getElementById('sbub');
+  b.textContent = text;
+  b.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => b.classList.remove('show'), 5000);
+}
+
+/* ===== LOG ===== */
+function log(msg) {
+  const el = document.getElementById('log');
+  const row = document.createElement('div');
+  row.textContent = String(msg);
+  el.prepend(row);
+  while (el.children.length > 40) el.removeChild(el.lastChild);
+}
+
+/* ===== WAKTU ===== */
+function isNight() { return dayTime >= NIGHT_AT; }
+
+/* ===== MONSTER ===== */
+function nearbyMonsters(p, r) { return mons.filter(m => dist(m, p) < r); }
+
+function spawnMonster() {
+  const ang = rnd() * Math.PI * 2;
+  const d = 450 + rnd() * 350;
+  const x = clamp(bram.x + Math.cos(ang) * d, 40, W - 40);
+  const y = clamp(bram.y + Math.sin(ang) * d, 40, H - 40);
+  const biome = biomeAt(x, y);
+  if (biome === 'camp') return;
+  const pool = MON[biome];
+  if (!pool || !pool.length) return;
+  const t = pool[Math.floor(rnd() * pool.length)];
+  const scale = 1 + dist({ x, y }, CAMP) / 900;
+  // Elite hanya muncul saat malam
+  const elite = isNight() && rnd() < 0.15;
+  const hp = Math.round(t.hp * scale * (elite ? 2.5 : 1));
+  mons.push({
+    id: ++monId, n: elite ? '👑 ' + t.n : t.n, ic: t.ic, x, y, biome,
+    hp, max: hp, dmg: t.dmg * scale * (elite ? 1.5 : 1), xp: elite ? t.xp * 2 : t.xp, sp: t.sp,
+    cd: 0, target: 'bram', elite, boss: false
+  });
+  if (elite) log('👑 Elite muncul di malam hari!');
+}
+
+function spawnBoss(d) {
+  mons.push({
+    id: ++monId, n: d.n, ic: d.ic, x: d.x, y: d.y, biome: 'boss',
+    hp: d.hp, max: d.hp, dmg: d.dmg, xp: d.xp, sp: d.sp,
+    cd: 0, target: 'bram', elite: false, boss: true, key: d.key, enraged: false
+  });
+}
+
+function killMonster(m) {
+  quest.kills++;
+  spawnBurst(m.x, m.y, m.boss ? 24 : 12, m.boss ? '#ffd36b' : '#ff8b75');
+  mons = mons.filter(x => x !== m);
+  if (atkTarget === m) atkTarget = null;
+  bram.xp += m.xp;
+  log(`${m.ic} ${m.n} tumbang! +${m.xp} XP`);
+  sariEvent(`${m.n} tumbang`);
+  if (m.boss) {
+    inv.inti += 2;
+    inv.kulit += 3;
+    bossTimer[m.key] = 180;
+    log('💎 Dapat 2 Inti dan 3 Kulit!');
+    sariEvent(`${m.n} berhasil dikalahkan`);
+    return;
+  }
+  if (m.elite && rnd() < 0.5) { inv.inti++; log('💎 Dapat 1 Inti.'); }
+  if ((m.biome === 'forest' || m.biome === 'river') && rnd() < 0.4) { inv.kulit++; log('Dapat 1 Kulit.'); }
+  if (rnd() < 0.3) { inv.makanan++; log('Dapat 1 Beri.'); }
+}
+
+function checkLevel() {
+  while (bram.xp >= bram.lvl * 25) {
+    bram.xp -= bram.lvl * 25;
+    bram.lvl++;
+    bram.maxHp += 10;
+    bram.atk += 1;
+    bram.hp += 10;
+    log(`⭐ Bram naik ke level ${bram.lvl}!`);
+    sariEvent(`Bram naik level ${bram.lvl}`);
+  }
+}
+
+/* ===== AKSI (satu tombol untuk semua) ===== */
+// Urutan prioritas: monster > sumber daya > air > meja kerja / bangun meja > api
+function aksiTarget() {
+  const m = mons.filter(x => dist(x, bram) < 300).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
+  if (m) return { type: 'mon', m };
+  const n = nodes.filter(x => x.cd <= 0 && dist(x, bram) < 70).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
+  if (n) return { type: 'node', n };
+  if (biomeAt(bram.x, bram.y) === 'river') return { type: 'air' };
+  if (dist(bram, CAMP) < CAMP_R) {
+    if (bench) return { type: 'bench' };
+    if (inv.kayu >= 4 && inv.batu >= 2) return { type: 'build' };
+  }
+  if (dist(bram, CAMP) < CAMP_R && fireLeft <= 0 && inv.kayu >= 2) return { type: 'api' };
+  return null;
+}
+
+function aksiLabel() {
+  const t = aksiTarget();
+  if (!t) return 'Aksi';
+  if (t.type === 'mon') return 'Serang ' + t.m.n;
+  if (t.type === 'node') return ACT_NAME[t.n.kind];
+  if (t.type === 'air') return 'Ambil air';
+  if (t.type === 'bench') return 'Meja kerja';
+  if (t.type === 'build') return 'Bangun meja';
+  return 'Nyalakan api';
+}
+
+function aksi() {
+  if (gameOver || gather.t > 0 || craftOpen) return;
+  const t = aksiTarget();
+  if (!t) { log('Tidak ada yang bisa dilakukan di sini.'); return; }
+  if (t.type === 'mon') { atkTarget = t.m; log(`Bram menyerang ${t.m.n}!`); return; }
+  if (t.type === 'bench') { openCraft(); return; }
+  if (t.type === 'build') {
+    inv.kayu -= 4;
+    inv.batu -= 2;
+    bench = true;
+    benchLvl = 1;
+    log('🔨 Meja kerja berdiri di kamp.');
+    sariEvent('meja kerja dibangun');
+    return;
+  }
+  if (t.type === 'api') {
+    inv.kayu -= 2;
+    fireLeft = 60;
+    log('🔥 Api unggun menyala 60 detik.');
+    return;
+  }
+  if (nearbyMonsters(bram, 160).length) { log('Ada monster di dekat, serang dulu!'); return; }
+  if (t.type === 'air') {
+    gather = { t: 2, kind: 'river', node: null };
+    log('Mulai mengambil air...');
+    return;
+  }
+  gather = { t: NODE[t.n.kind].t, kind: t.n.kind, node: t.n };
+  log(`Mulai ${ACT_NAME[t.n.kind].toLowerCase()}...`);
+}
+
+function finishGather() {
+  if (gather.kind === 'river') {
+    inv.air++;
+    log('Dapat 1 Air.');
+  } else {
+    gather.node.cd = 25;
+    if (gather.kind === 'bush') {
+      inv.makanan++;
+      log('Dapat 1 Beri.');
+    } else {
+      const item = NODE[gather.kind].item;
+      inv[item]++;
+      if (gather.kind === 'tree') quest.wood++;
+      spawnBurst(gather.node.x, gather.node.y, 7, '#a8e6a1');
+      log(`Dapat 1 ${ITEM[item]}.`);
+    }
+  }
+  gather = { t: 0, kind: null, node: null };
+}
+
+function useItem(k) {
+  if (gameOver || (inv[k] || 0) <= 0) return;
+  inv[k]--;
+  if (k === 'makanan') { needs.lapar = clamp(needs.lapar + 30, 0, 100); log('Bram makan beri.'); }
+  if (k === 'air') { needs.haus = clamp(needs.haus + 35, 0, 100); log('Bram minum air.'); }
+  if (k === 'perban') { bram.hp = clamp(bram.hp + 30, 0, bram.maxHp); log('Bram memakai perban.'); }
+  renderTas();
+}
+
+/* ===== MEJA KERJA ===== */
+function openCraft() {
+  craftOpen = true;
+  renderCraft();
+  document.getElementById('craft').classList.add('show');
+}
+
+function closeCraft() {
+  craftOpen = false;
+  document.getElementById('craft').classList.remove('show');
+}
+
+function canAfford(cost) {
+  return Object.keys(cost).every(k => (inv[k] || 0) >= cost[k]);
+}
+
+function payCost(cost) {
+  for (const k in cost) inv[k] -= cost[k];
+}
+
+function renderCraft() {
+  const box = document.getElementById('craftList');
+  box.innerHTML = '';
+  if (benchLvl < 2) {
+    const u = document.createElement('button');
+    u.className = 'rbtn up';
+    const txt = Object.keys(BENCH2_COST).map(k => `${BENCH2_COST[k]} ${ITEM[k]}`).join(', ');
+    u.innerHTML = `⬆️ Upgrade meja ke Lv 2 <small>Buka resep tingkat 2 · butuh ${txt}</small>`;
+    u.disabled = !canAfford(BENCH2_COST);
+    u.onclick = upgradeBench;
+    box.appendChild(u);
+  }
+  RECIPES.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'rbtn';
+    const costTxt = Object.keys(r.cost).map(k => `${r.cost[k]} ${ITEM[k]}`).join(', ');
+    const locked = r.bench > benchLvl;
+    const equipped = r.slot && equip[r.slot] && equip[r.slot].id === r.item?.id;
+    let note = r.desc + ' · butuh ' + costTxt;
+    if (locked) note = `🔒 Butuh meja Lv ${r.bench} · ` + note;
+    if (equipped) note = '✅ Sudah terpasang · ' + note;
+    b.innerHTML = `${r.item ? r.item.icon + ' ' : ''}${r.name} <small>${note}</small>`;
+    b.disabled = locked || equipped || !canAfford(r.cost);
+    b.onclick = () => craftItem(r);
+    box.appendChild(b);
+  });
+}
+
+function upgradeBench() {
+  if (benchLvl >= 2 || !canAfford(BENCH2_COST)) return;
+  payCost(BENCH2_COST);
+  benchLvl = 2;
+  log('🔨 Meja kerja di-upgrade ke Lv 2.');
+  sariEvent('meja kerja di-upgrade');
+  renderCraft();
+}
+
+function craftItem(r) {
+  if (r.bench > benchLvl || !canAfford(r.cost)) return;
+  if (r.slot && equip[r.slot] && equip[r.slot].id === r.item.id) return;
+  payCost(r.cost);
+  if (r.slot) {
+    equip[r.slot] = r.item;
+    log(`🔨 Membuat dan memasang ${r.item.name}.`);
+    sariEvent(`memasang ${r.item.name}`);
+  } else {
+    inv.perban++;
+    log('🔨 Membuat 1 Perban.');
+  }
+  renderCraft();
+}
+
+/* ===== TAS & KARAKTER ===== */
+function openTas() {
+  renderTas();
+  document.getElementById('tas').classList.add('show');
+}
+
+function closeTas() {
+  document.getElementById('tas').classList.remove('show');
+}
+
+function isTasOpen() {
+  return document.getElementById('tas').classList.contains('show');
+}
+
+function renderTas() {
+  const useBtn = (k, label) =>
+    `<button onclick="useItem('${k}')" ${(inv[k] || 0) <= 0 ? 'disabled' : ''}>${label}</button>`;
+  const w = equip.weapon ? `${equip.weapon.icon} ${equip.weapon.name} (ATK +${equip.weapon.atk})` : 'Tangan kosong';
+  const a = equip.armor ? `${equip.armor.icon} ${equip.armor.name} (-${Math.round(equip.armor.red * 100)}% dmg)` : 'Tanpa pelindung';
+  document.getElementById('tasBody').innerHTML = `
+    <div class="tas-sec">Bram</div>
+    <div class="tas-row"><span>Level</span><span>${bram.lvl}</span></div>
+    <div class="tas-row"><span>HP</span><span>${Math.round(bram.hp)} / ${bram.maxHp}</span></div>
+    <div class="tas-row"><span>Serangan total</span><span>${totalAtk()}</span></div>
+    <div class="tas-row"><span>XP</span><span>${bram.xp} / ${bram.lvl * 25}</span></div>
+    <div class="tas-sec">Perlengkapan</div>
+    <div class="tas-row"><span>Senjata</span><span>${w}</span></div>
+    <div class="tas-row"><span>Baju</span><span>${a}</span></div>
+    <div class="tas-sec">Sari (companion)</div>
+    <div class="tas-row"><span>Serangan</span><span>${Math.round(totalAtk() / 2)} · immortal</span></div>
+    <div class="tas-sec">Inventaris</div>
+    <div class="tas-row"><span>🪵 Kayu</span><span>${inv.kayu}</span></div>
+    <div class="tas-row"><span>🪨 Batu</span><span>${inv.batu}</span></div>
+    <div class="tas-row"><span>🦊 Kulit</span><span>${inv.kulit}</span></div>
+    <div class="tas-row"><span>💎 Inti</span><span>${inv.inti}</span></div>
+    <div class="tas-row"><span>🫐 Beri</span><span>${inv.makanan} ${useBtn('makanan', 'Makan')}</span></div>
+    <div class="tas-row"><span>💧 Air</span><span>${inv.air} ${useBtn('air', 'Minum')}</span></div>
+    <div class="tas-row"><span>🩹 Perban</span><span>${inv.perban} ${useBtn('perban', 'Pakai')}</span></div>
+  `;
+}
+
+
+/* ===== FITUR ULTIMATE: MISI, HINDAR, EFEK, SAVE ===== */
+const SAVE_KEY = 'bram_sari_ultimate_v1';
+let quest = { wood: 0, kills: 0 };
+let questVisible = true;
+let dodgeCd = 0, dodgeUntil = 0, dodgeDir = {x:1,y:0};
+let particles = [];
+let weather = 'cerah', weatherClock = 0, weatherDrops = [];
+let saveClock = 0;
+
+function newGame() { localStorage.removeItem(SAVE_KEY); location.reload(); }
+function toggleQuest() {
+  questVisible = !questVisible;
+  document.getElementById('questPanel').classList.toggle('hidden', !questVisible);
+}
+function renderQuest() {
+  const a = Math.min(5, quest.wood), b = Math.min(3, quest.kills);
+  const done = a >= 5 && b >= 3;
+  document.getElementById('questText').textContent =
+    `${done ? '✅ Misi selesai! Bonus: 25 XP' : `🪵 Kayu ${a}/5 · ⚔️ Monster ${b}/3`}`;
+  document.getElementById('questBar').style.width = ((a + b) / 8 * 100) + '%';
+  if (done && !quest.rewarded) {
+    quest.rewarded = true; bram.xp += 25; inv.makanan += 2;
+    log('🏆 Misi selesai! +25 XP dan 2 beri.');
+    sariEvent('misi pertama selesai');
+  }
+}
+function dodge() {
+  if (gameOver || dodgeCd > 0) return;
+  const dx = jv.x || (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
+  const dy = jv.y || (keys['s'] || keys['arrowdown'] ? 1 : 0) - (keys['w'] || keys['arrowup'] ? 1 : 0);
+  const d = Math.hypot(dx,dy) || 1;
+  dodgeDir = {x:dx/d,y:dy/d};
+  if (!dx && !dy) dodgeDir = {x:1,y:0};
+  bram.x = clamp(bram.x + dodgeDir.x * 115, 20, W-20);
+  bram.y = clamp(bram.y + dodgeDir.y * 115, 20, H-20);
+  dodgeUntil = Date.now() + 420;
+  dodgeCd = 3.2;
+  spawnBurst(bram.x, bram.y, 14, '#8fe7ff');
+  log('💨 Bram menghindar!');
+}
+function spawnBurst(x,y,count,color) {
+  for (let i=0;i<count;i++) {
+    const a = Math.random()*Math.PI*2, sp = 25+Math.random()*100;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.45,max:.8,color,size:2+Math.random()*3});
+  }
+  if (particles.length > 180) particles.splice(0, particles.length-180);
+}
+function updateEffects(dt) {
+  for (const p of particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt; p.vx *= .96; p.vy *= .96; }
+  particles = particles.filter(p=>p.life>0);
+  weatherClock += dt;
+  if (weatherClock > 48) {
+    weatherClock = 0;
+    weather = Math.random() < .35 ? 'hujan' : 'cerah';
+    log(weather === 'hujan' ? '🌧️ Hujan turun di seluruh hutan.' : '🌤️ Langit mulai cerah.');
+    sariEvent(weather === 'hujan' ? 'hujan mulai turun' : 'hujan berhenti');
+  }
+  if (weather === 'hujan') {
+    for(let i=0;i<3;i++) weatherDrops.push({x:Math.random()*cv.width,y:-5,v:260+Math.random()*160});
+    if(weatherDrops.length>180) weatherDrops.splice(0,weatherDrops.length-180);
+    for(const d of weatherDrops) d.y += d.v*dt;
+    weatherDrops = weatherDrops.filter(d=>d.y<cv.height+10);
+  }
+}
+function drawEffects() {
+  const cam = camera();
+  ctx.save();
+  for(const p of particles) {
+    ctx.globalAlpha = Math.max(0,p.life/p.max);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x-cam.x,p.y-cam.y,p.size,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  if(weather==='hujan') {
+    ctx.strokeStyle='rgba(170,210,255,.42)'; ctx.lineWidth=1;
+    for(const d of weatherDrops) { ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-4,d.y+10);ctx.stroke(); }
+  }
+  if(Date.now()<dodgeUntil) {
+    ctx.strokeStyle='rgba(125,225,255,.85)';ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(bram.x-cam.x,bram.y-cam.y,25,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+}
+function saveGame(showMessage=false) {
+  try {
+    const data = {
+      day,dayTime,bram,sari,needs,inv,equip,bench,benchLvl,mons,nodes,
+      bossTimer,fireLeft,quest,weather,worldRndState:'fixed'
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    if(showMessage) log('💾 Progres berhasil disimpan di perangkat.');
+    return true;
+  } catch(e) {
+    if(showMessage) log('⚠️ Gagal menyimpan. Periksa ruang penyimpanan browser.');
+    return false;
+  }
+}
+function loadGame(showMessage=false) {
+  try {
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw) { if(showMessage) log('Belum ada data tersimpan.'); return false; }
+    const d=JSON.parse(raw);
+    if(!d || !d.bram || !d.inv) throw new Error('Data save tidak cocok');
+    day=d.day||1;dayTime=d.dayTime||0;
+    Object.assign(bram,d.bram);Object.assign(sari,d.sari||{});
+    Object.assign(needs,d.needs||{});Object.assign(inv,d.inv||{});
+    equip=d.equip||{weapon:null,armor:null};bench=!!d.bench;benchLvl=d.benchLvl||0;
+    mons=Array.isArray(d.mons)?d.mons:mons;
+    if(Array.isArray(d.nodes)) { nodes.splice(0,nodes.length,...d.nodes); }
+    if(d.bossTimer) Object.assign(bossTimer,d.bossTimer);
+    fireLeft=d.fireLeft||0;quest=Object.assign({wood:0,kills:0},d.quest||{});
+    weather=d.weather||'cerah';
+    gameOver=false;document.getElementById('over').style.display='none';
+    if(showMessage) log('📂 Progres berhasil dimuat.');
+    renderHud();renderQuest();return true;
+  } catch(e) { if(showMessage) log('⚠️ Save tidak bisa dibaca: '+e.message); return false; }
+}
+function updateSave(dt) {
+  saveClock += dt;
+  dodgeCd = Math.max(0,dodgeCd-dt);
+  if(saveClock>=8) { saveClock=0; saveGame(false); }
+  const b=document.getElementById('btnDodge');
+  if(b) { b.disabled=dodgeCd>0; b.querySelector('span').textContent=dodgeCd>0?dodgeCd.toFixed(1)+'s':'Hindar'; }
+}
+const baseUpdate = update;
+update = function(dt) {
+  baseUpdate(dt);
+  updateEffects(dt);
+  updateSave(dt);
+  renderQuest();
+};
+const baseDraw = draw;
+draw = function() { baseDraw(); drawEffects(); };
+
+/* ===== UPDATE (dipanggil tiap frame, dt dalam detik) ===== */
+function update(dt) {
+  // Waktu
+  dayTime += dt;
+  if (dayTime >= DAY_LEN) { dayTime = 0; day++; log(`Hari ke-${day} dimulai.`); }
+  const night = isNight();
+  if (night && !flags.night) { flags.night = true; log('🌙 Malam tiba. Monster makin banyak dan elite bisa muncul.'); sariEvent('malam tiba'); }
+  if (!night) flags.night = false;
+
+  // Gerak Bram: joystick + keyboard
+  const kx = (keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0);
+  const ky = (keys['s'] || keys['arrowdown'] ? 1 : 0) - (keys['w'] || keys['arrowup'] ? 1 : 0);
+  let vx = jv.x + kx, vy = jv.y + ky;
+  const vl = Math.hypot(vx, vy);
+  if (vl > 1) { vx /= vl; vy /= vl; }
+  const moving = vl > 0.15;
+
+  if (moving) {
+    bram.x = clamp(bram.x + vx * 95 * dt, 20, W - 20);
+    bram.y = clamp(bram.y + vy * 95 * dt, 20, H - 20);
+    needs.energi -= 0.6 * dt;
+    if (gather.t > 0) { gather = { t: 0, kind: null, node: null }; log('Pengumpulan dibatalkan karena bergerak.'); }
+  }
+
+  // Bram mengejar target serangan yang dipilih
+  if (atkTarget) {
+    const ok = mons.includes(atkTarget) && dist(atkTarget, bram) < 380 && !moving;
+    if (!ok) atkTarget = null;
+    else {
+      const dx = atkTarget.x - bram.x, dy = atkTarget.y - bram.y, d = Math.hypot(dx, dy);
+      if (d > 45) {
+        bram.x = clamp(bram.x + dx / d * 95 * dt, 20, W - 20);
+        bram.y = clamp(bram.y + dy / d * 95 * dt, 20, H - 20);
+        needs.energi -= 0.3 * dt;
+      }
+    }
+  }
+
+  if (craftOpen && dist(bram, CAMP) >= CAMP_R) closeCraft();
+
+  // Sari: ikut Bram, pasang badan saat Bram lemah, dan tetap dalam radius dekat
+  const nearMons = mons.filter(m => dist(m, bram) < 200).sort((a, b) => dist(a, bram) - dist(b, bram));
+  const engaged = nearMons[0] || null;
+  let goX = bram.x + 40, goY = bram.y - 20;
+  if (engaged && dist(engaged, bram) < 220) {
+    if (bram.hp < 50) {
+      // Berdiri di antara Bram dan monster terdekat
+      const dx = engaged.x - bram.x, dy = engaged.y - bram.y, d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(d, 60) / d;
+      goX = bram.x + dx * k;
+      goY = bram.y + dy * k;
+    } else {
+      goX = engaged.x;
+      goY = engaged.y;
+    }
+  }
+  const gdx = goX - sari.x, gdy = goY - sari.y, gd = Math.hypot(gdx, gdy);
+  if (gd > 36) {
+    const step = Math.min(gd, 110 * dt);
+    sari.x += gdx / gd * step;
+    sari.y += gdy / gd * step;
+  }
+  if (dist(sari, bram) > 240) {
+    const sx = bram.x - sari.x, sy = bram.y - sari.y, sd = Math.hypot(sx, sy) || 1;
+    sari.x += sx / sd * Math.min(sd - 200, 200 * dt);
+    sari.y += sy / sd * Math.min(sd - 200, 200 * dt);
+  }
+
+  // Taunt: saat Bram lemah, monster di dekat Sari beralih mengincar Sari
+  const taunting = bram.hp < 35;
+  if (taunting && !flags.taunt) { flags.taunt = true; sariEvent('Sari menarik perhatian monster'); }
+  if (bram.hp > 55) flags.taunt = false;
+
+  // Monster: kejar target, serang, atau mengamuk saat boss sekarat
+  const armorMul = 1 - armorRed();
+  for (const m of mons) {
+    const dB = dist(m, bram), dS = dist(m, sari);
+    let tgt = dB <= dS ? bram : sari;
+    if (taunting && dS < 200) tgt = sari;
+    m.target = tgt === bram ? 'bram' : 'sari';
+
+    if (m.boss && !m.enraged && m.hp < m.max * 0.5) {
+      m.enraged = true;
+      m.dmg *= 1.5;
+      m.sp *= 1.3;
+      log(`🔥 ${m.n} mengamuk!`);
+      sariEvent(`${m.n} mengamuk`);
+    }
+
+    const dT = Math.min(dB, dS);
+    if (dT < 170) {
+      const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy) || 1;
+      if (d > 28) {
+        m.x += dx / d * m.sp * dt;
+        m.y += dy / d * m.sp * dt;
+      } else {
+        m.cd -= dt;
+        if (m.cd <= 0) {
+          m.cd = 1;
+          if (tgt === bram && Date.now() >= dodgeUntil) bram.hp -= m.dmg * (night ? 1.3 : 1) * armorMul;
+        }
+      }
+    }
+  }
+  // Monster biasa yang terlalu jauh dihapus, boss tetap di tempat
+  mons = mons.filter(m => m.boss || dist(m, bram) < 1400);
+
+  // Serangan Bram dan Sari ke monster terdekat
+  bram.cd -= dt;
+  if (bram.cd <= 0) {
+    const t = mons.filter(m => dist(m, bram) < 55).sort((a, b) => dist(a, bram) - dist(b, bram))[0];
+    if (t) { t.hp -= totalAtk(); bram.cd = 0.8; }
+  }
+  sari.cd -= dt;
+  if (sari.cd <= 0) {
+    const t = mons.filter(m => dist(m, sari) < 50).sort((a, b) => dist(a, sari) - dist(b, sari))[0];
+    if (t) { t.hp -= totalAtk() / 2; sari.cd = 0.8; }
+  }
+  for (const m of [...mons]) if (m.hp <= 0) killMonster(m);
+
+  // Boss hidup lagi setelah 3 menit
+  for (const d of BOSS_DEFS) {
+    if (!mons.some(m => m.key === d.key)) {
+      if (bossTimer[d.key] > 0) {
+        bossTimer[d.key] -= dt;
+        if (bossTimer[d.key] <= 0) { spawnBoss(d); log(`⚠️ ${d.n} kembali ke wilayahnya.`); }
+      }
+    }
+  }
+
+  // Spawn monster biasa di luar kamp
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) {
+    spawnTimer = night ? 1.5 : 3;
+    const cap = night ? 22 : 14;
+    const normal = mons.filter(m => !m.boss).length;
+    if (normal < cap && dist(bram, CAMP) > CAMP_R) spawnMonster();
+  }
+
+  // Sari memberi peringatan
+  const nearNow = nearbyMonsters(bram, 300);
+  if (nearNow.length && !flags.nearAlert) { flags.nearAlert = true; sariEvent(`${nearNow[0].n} mendekat`); }
+  if (!nearNow.length) flags.nearAlert = false;
+  if (nearNow.length >= 3 && Date.now() - lastCrowd > 15000) { lastCrowd = Date.now(); sariEvent('banyak monster mengepung'); }
+
+  // Ambil sumber daya
+  for (const n of nodes) if (n.cd > 0) n.cd -= dt;
+  if (gather.t > 0) {
+    if (nearbyMonsters(bram, 150).length) {
+      gather = { t: 0, kind: null, node: null };
+      log('Pengumpulan dibatalkan, monster datang!');
+    } else {
+      gather.t -= dt;
+      if (gather.t <= 0) finishGather();
+    }
+  }
+
+  // Kebutuhan
+  needs.lapar -= 0.35 * dt;
+  needs.haus -= 0.5 * dt;
+  const inCamp = dist(bram, CAMP) < CAMP_R;
+  if (inCamp) {
+    needs.energi += 0.8 * dt;
+    needs.takut -= 0.3 * dt;
+    if (fireLeft > 0) needs.takut -= 0.4 * dt;
+  } else {
+    if (!moving) needs.energi -= 0.2 * dt;
+    needs.takut += (night ? 0.4 : -0.2) * dt;
+  }
+  if (fireLeft > 0) fireLeft -= dt;
+  for (const k of ['lapar', 'haus', 'energi', 'takut']) needs[k] = clamp(needs[k], 0, 100);
+
+  // HP
+  if (bram.hp < 35 && inv.perban > 0) {
+    inv.perban--;
+    bram.hp = Math.min(bram.maxHp, bram.hp + 30);
+    log('Bram memakai perban otomatis.');
+  }
+  if (needs.lapar <= 0 || needs.haus <= 0) bram.hp -= 1 * dt;
+  else if (needs.lapar > 30 && needs.haus > 30 && needs.energi > 20) bram.hp += 0.4 * dt;
+  if (needs.energi <= 0) bram.hp -= 0.5 * dt;
+  bram.hp = clamp(bram.hp, 0, bram.maxHp);
+  checkLevel();
+
+  // Pemicu komentar Sari
+  if (bram.hp < 30 && !flags.lowHp) { flags.lowHp = true; sariEvent('Bram luka parah'); }
+  if (bram.hp > 60) flags.lowHp = false;
+  if (needs.lapar < 20 && !flags.lapar) { flags.lapar = true; sariEvent('makanan hampir habis'); }
+  if (needs.lapar > 40) flags.lapar = false;
+  if (needs.haus < 20 && !flags.haus) { flags.haus = true; sariEvent('air hampir habis'); }
+  if (needs.haus > 40) flags.haus = false;
+  if (needs.takut > 70 && !flags.takut) { flags.takut = true; sariEvent('Bram ketakutan'); }
+  if (needs.takut < 50) flags.takut = false;
+
+  if (bram.hp <= 0 && !gameOver) {
+    gameOver = true;
+    log('💀 Bram tumbang...');
+    sariEvent('Bram tumbang');
+    document.getElementById('over').style.display = 'flex';
+  }
+
+  flushSari();
+}
+
+/* ===== GAMBAR ===== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const TILE = 60;
+
+function resizeCanvas() {
+  const box = document.getElementById('world');
+  cv.width = box.clientWidth;
+  cv.height = box.clientHeight;
+}
+
+function camera() {
+  return {
+    x: clamp(bram.x - cv.width / 2, 0, W - cv.width),
+    y: clamp(bram.y - cv.height / 2, 0, H - cv.height)
+  };
+}
+
+function draw() {
+  const cam = camera();
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  // Tanah per tile
+  const tx0 = Math.floor(cam.x / TILE), tx1 = Math.ceil((cam.x + cv.width) / TILE);
+  const ty0 = Math.floor(cam.y / TILE), ty1 = Math.ceil((cam.y + cv.height) / TILE);
+  for (let tx = tx0; tx <= tx1; tx++) {
+    for (let ty = ty0; ty <= ty1; ty++) {
+      const wx = tx * TILE + TILE / 2, wy = ty * TILE + TILE / 2;
+      ctx.fillStyle = BIOME_COL[biomeAt(wx, wy)];
+      ctx.fillRect(tx * TILE - cam.x, ty * TILE - cam.y, TILE + 1, TILE + 1);
+    }
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Kamp
+  ctx.font = '36px sans-serif';
+  ctx.fillText('⛺', CAMP.x - cam.x, CAMP.y - cam.y);
+  if (bench) {
+    ctx.font = '30px sans-serif';
+    ctx.fillText('🛠️', CAMP.x + 70 - cam.x, CAMP.y - 30 - cam.y);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`Meja Lv ${benchLvl}`, CAMP.x + 70 - cam.x, CAMP.y - 6 - cam.y);
+  }
+  if (fireLeft > 0) {
+    ctx.font = '28px sans-serif';
+    ctx.fillText('🔥', CAMP.x - 50 - cam.x, CAMP.y + 30 - cam.y);
+  }
+
+  // Sumber daya
+  for (const n of nodes) {
+    const sx = n.x - cam.x, sy = n.y - cam.y;
+    if (sx < -40 || sy < -40 || sx > cv.width + 40 || sy > cv.height + 40) continue;
+    ctx.globalAlpha = n.cd > 0 ? 0.25 : 1;
+    ctx.font = '24px sans-serif';
+    ctx.fillText(NODE[n.kind].ic, sx, sy);
+    ctx.globalAlpha = 1;
+  }
+
+  // Monster (boss dan elite lebih besar)
+  for (const m of mons) {
+    const sx = m.x - cam.x, sy = m.y - cam.y;
+    if (sx < -60 || sy < -60 || sx > cv.width + 60 || sy > cv.height + 60) continue;
+    ctx.font = m.boss ? '42px sans-serif' : (m.elite ? '30px sans-serif' : '26px sans-serif');
+    ctx.fillText(m.ic, sx, sy);
+    if (!m.boss) {
+      ctx.fillStyle = '#000a';
+      ctx.fillRect(sx - 16, sy - 26, 32, 4);
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillRect(sx - 16, sy - 26, 32 * clamp(m.hp / m.max, 0, 1), 4);
+    }
+  }
+
+  // Bram dan Sari, dengan perlengkapan
+  ctx.font = '28px sans-serif';
+  ctx.fillText('👧', sari.x - cam.x, sari.y - cam.y);
+  ctx.fillText('🧑', bram.x - cam.x, bram.y - cam.y);
+  if (equip.weapon) { ctx.font = '20px sans-serif'; ctx.fillText(equip.weapon.icon, bram.x + 18 - cam.x, bram.y - 6 - cam.y); }
+  if (equip.armor) { ctx.font = '18px sans-serif'; ctx.fillText(equip.armor.icon, bram.x - 18 - cam.x, bram.y + 8 - cam.y); }
+
+  // Malam
+  if (isNight()) {
+    ctx.fillStyle = 'rgba(0,0,40,0.38)';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle='rgba(220,230,255,.75)';
+    for(let i=0;i<18;i++){ const sx=(i*97+31)%cv.width, sy=(i*53+17)%Math.max(1,cv.height*.65); ctx.fillRect(sx,sy,1.5,1.5); }
+  }
+  // Cahaya kamp dan api
+  const campX=CAMP.x-cam.x,campY=CAMP.y-cam.y;
+  const glow=ctx.createRadialGradient(campX,campY,8,campX,campY,fireLeft>0?190:95);
+  glow.addColorStop(0,fireLeft>0?'rgba(255,170,65,.20)':'rgba(255,220,140,.10)');
+  glow.addColorStop(1,'rgba(255,180,70,0)');
+  ctx.fillStyle=glow;ctx.fillRect(campX-200,campY-200,400,400);
+
+  // Bar boss terdekat
+  let boss = null, bd = 700;
+  for (const m of mons) if (m.boss && dist(m, bram) < bd) { bd = dist(m, bram); boss = m; }
+  if (boss) {
+    const bw = cv.width * 0.6, bx = (cv.width - bw) / 2, by = 46;
+    ctx.fillStyle = '#000a';
+    ctx.fillRect(bx - 2, by - 2, bw + 4, 14);
+    ctx.fillStyle = boss.enraged ? '#ff3b3b' : '#e5b84d';
+    ctx.fillRect(bx, by, bw * clamp(boss.hp / boss.max, 0, 1), 10);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(`${boss.ic} ${boss.n}${boss.enraged ? ' (mengamuk)' : ''}`, cv.width / 2, by - 10);
+  }
+
+  // Progres kumpul
+  if (gather.t > 0) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(`⏳ ${gather.t.toFixed(1)}s`, bram.x - cam.x, bram.y - cam.y - 30);
+  }
+}
+
+function updateBubblePos() {
+  const b = document.getElementById('sbub');
+  if (!b.classList.contains('show')) return;
+  const cam = camera();
+  b.style.left = (sari.x - cam.x) + 'px';
+  b.style.top = (sari.y - cam.y - 26) + 'px';
+}
+
+/* ===== HUD ===== */
+let hudAcc = 0;
+function setBar(id, pct) { document.getElementById(id).style.width = clamp(pct, 0, 100) + '%'; }
+
+function renderHud() {
+  const night = isNight();
+  document.getElementById('clock').textContent = `Hari ${day} · ${night ? '🌙 Malam' : '☀️ Siang'}`;
+  document.getElementById('hint').textContent = `📍 ${BIOME_NAME[biomeAt(bram.x, bram.y)]} · ${weather==='hujan'?'🌧️ Hujan':'🌤️ Cerah'}`;
+
+  setBar('nb-hp', bram.hp / bram.maxHp * 100);
+  document.getElementById('nb-hp').classList.toggle('low', bram.hp < 30);
+  document.getElementById('nv-hp').textContent = Math.round(bram.hp);
+
+  ['lapar', 'haus', 'energi'].forEach(k => {
+    const v = Math.round(needs[k]);
+    setBar('nb-' + k, v);
+    document.getElementById('nb-' + k).classList.toggle('low', v < 30);
+    document.getElementById('nv-' + k).textContent = v;
+  });
+
+  const fear = Math.round(needs.takut);
+  setBar('nb-takut', fear);
+  document.getElementById('nb-takut').classList.toggle('high', fear > 70);
+  document.getElementById('nv-takut').textContent = fear;
+
+  const xpNeed = bram.lvl * 25;
+  setBar('nb-xp', bram.xp / xpNeed * 100);
+  document.getElementById('nv-xp').textContent = `${bram.xp}/${xpNeed}`;
+  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · Sari companion (immortal)`;
+
+  const ab = document.getElementById('btnAksi');
+  ab.disabled = gameOver;
+  document.getElementById('aksiTxt').textContent = gather.t > 0 ? `${gather.t.toFixed(1)}s` : aksiLabel();
+
+  document.getElementById('inv').textContent =
+    `🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
+
+  if (craftOpen) renderCraft();
+  if (isTasOpen()) renderTas();
+}
+
+/* ===== INPUT ===== */
+const joy = document.getElementById('joy');
+const knob = document.getElementById('knob');
+let joyActive = false;
+
+function moveJoy(e) {
+  const r = joy.getBoundingClientRect();
+  let dx = e.clientX - (r.left + r.width / 2);
+  let dy = e.clientY - (r.top + r.height / 2);
+  const max = 40, d = Math.hypot(dx, dy);
+  if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+  jv = { x: dx / max, y: dy / max };
+  knob.style.left = (33 + dx) + 'px';
+  knob.style.top = (33 + dy) + 'px';
+}
+
+joy.addEventListener('pointerdown', e => { joyActive = true; joy.setPointerCapture(e.pointerId); moveJoy(e); });
+joy.addEventListener('pointermove', e => { if (joyActive) moveJoy(e); });
+const joyEnd = () => { joyActive = false; jv = { x: 0, y: 0 }; knob.style.left = '33px'; knob.style.top = '33px'; };
+joy.addEventListener('pointerup', joyEnd);
+joy.addEventListener('pointercancel', joyEnd);
+
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('resize', resizeCanvas);
+
+// Tap monster di peta untuk menyerang
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect();
+  const cam = camera();
+  const wx = e.clientX - r.left + cam.x, wy = e.clientY - r.top + cam.y;
+  let best = null, bd = 60;
+  for (const m of mons) {
+    const d = Math.hypot(m.x - wx, m.y - wy);
+    if (d < bd) { bd = d; best = m; }
+  }
+  if (best && !gameOver) { atkTarget = best; log(`Bram menyerang ${best.n}!`); }
+});
+
+/* ===== LOOP ===== */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (!gameOver) update(dt);
+  draw();
+  updateBubblePos();
+  hudAcc += dt;
+  if (hudAcc > 0.2) { hudAcc = 0; renderHud(); }
+  requestAnimationFrame(frame);
+}
+
+/* ===== MULAI ===== */
+resizeCanvas();
+const hadSave = loadGame(false);
+for (const d of BOSS_DEFS) if (!mons.some(m=>m.key===d.key) && (!hadSave || !(bossTimer[d.key]>0))) spawnBoss(d);
+log(hadSave ? '📂 Save otomatis dimuat. Selamat kembali, Bram!' : 'Bram dan Sari mulai di kamp. Jelajahi dunia, tapi kembali sebelum malam.');
+renderQuest();
+sariEvent('mulai di kamp');
+renderHud();
+requestAnimationFrame(frame);
+setTimeout(testAI, 1000);
+</script>
+</body>
+</html>
