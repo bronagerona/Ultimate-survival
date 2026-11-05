@@ -279,7 +279,7 @@ let day = 1, dayTime = 0;
 let bram = { x: CAMP.x + 30, y: CAMP.y, hp: 100, maxHp: 100, atk: 5, lvl: 1, xp: 0, cd: 0 };
 let sari = { x: CAMP.x - 30, y: CAMP.y, cd: 0 };
 let needs = { lapar: 80, haus: 80, energi: 90, takut: 10 };
-let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, kristal: 0, makanan: 2, air: 2, perban: 1, peluru: 60, koin: 0 };
+let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, kristal: 0, makanan: 2, air: 2, perban: 1, koin: 0 };
 let equip = { weapon: null, armor: null };
 let bench = false, benchLvl = 0;
 let craftOpen = false;
@@ -873,7 +873,7 @@ function loadGame(showMessage=false) {
     if(d.storage) Object.assign(storage,d.storage);
     if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
     dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
-    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
+    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};delete inv.peluru;inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
@@ -1009,7 +1009,7 @@ function update(dt) {
   // Ambil sumber daya: Sari otomatis memungut node dalam radius dekat Bram.
   for (const n of nodes) if (n.cd > 0) n.cd -= dt;
   sariGatherCd=Math.max(0,sariGatherCd-dt);
-  if(sariGatherCd<=0&&!gameOver){const nearbyNode=nodes.filter(n=>n.cd<=0&&dist(n,bram)<=88).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];if(nearbyNode){gather={t:0,kind:nearbyNode.kind,node:nearbyNode};finishGather();sariGatherCd=1.15;sariEvent('Sari mengambil '+(nearbyNode.kind==='tree'?'kayu':nearbyNode.kind==='bush'?'beri':nearbyNode.kind==='rock'?'batu':nearbyNode.kind==='crystal'?'kristal':'isi peti')+' di dekat Bram');}}
+  if(sariGatherCd<=0&&!gameOver){const nearbyNode=nodes.filter(n=>n.cd<=0&&dist(n,bram)<=88).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];if(nearbyNode){gather={t:0,kind:nearbyNode.kind,node:nearbyNode};finishGather();sariGatherCd=1.8;}}
   if (gather.t > 0) {
     if (nearbyMonsters(bram, 150).length) {
       gather = { t: 0, kind: null, node: null };
