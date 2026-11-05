@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bram & Sari - Survival Evolution v2.1</title>
+<title>Bram & Sari - Survival Evolution v2.2</title>
 <style>
 :root{--bg:#0f1a14;--panel:#18271e;--ink:#e9f3ea;--mut:#9bb5a0;--line:#2c4534;--acc:#5fbf7a;--warn:#e5484d;color-scheme:dark}
 *{box-sizing:border-box}
@@ -127,7 +127,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
 <div id="craft" class="craft">
   <div class="craft-box">
     <h3>🔨 Meja Kerja</h3>
-    <div id="craftList"></div>
+    <div id="craftList"></div><div class="tas-sec">🔫 Upgrade senjata Bram</div><div id="gunUpgradeList"></div><div class="tas-sec">🧰 Amunisi</div><button class="rbtn" onclick="craftAmmo()">Buat 20 peluru <small>Butuh 3 kayu + 2 batu</small></button>
     <button class="craft-close" onclick="closeCraft()">Tutup</button>
   </div>
 </div>
@@ -265,12 +265,6 @@ const bossTimer = { golem: 0, raja: 0 };
 /* ===== RESEP DAN PERLENGKAPAN ===== */
 const BENCH2_COST = { kayu: 6, batu: 4, kulit: 2 };
 const RECIPES = [
-  { id: 'tombak', name: 'Tombak', cost: { kayu: 3, batu: 2 }, desc: 'Senjata · ATK +3', bench: 1, slot: 'weapon',
-    item: { id: 'tombak', name: 'Tombak', icon: '🔱', atk: 3 } },
-  { id: 'parang', name: 'Parang Batu', cost: { kayu: 2, batu: 4, kulit: 1 }, desc: 'Senjata · ATK +5', bench: 2, slot: 'weapon',
-    item: { id: 'parang', name: 'Parang Batu', icon: '🗡️', atk: 5 } },
-  { id: 'tombakInti', name: 'Tombak Inti', cost: { kayu: 2, inti: 2 }, desc: 'Senjata · ATK +9', bench: 2, slot: 'weapon',
-    item: { id: 'tombakInti', name: 'Tombak Inti', icon: '⚔️', atk: 9 } },
   { id: 'bajuKulit', name: 'Baju Kulit', cost: { kayu: 1, kulit: 3 }, desc: 'Pelindung · dmg musuh -20%', bench: 1, slot: 'armor',
     item: { id: 'bajuKulit', name: 'Baju Kulit', icon: '🦺', red: 0.2 } },
   { id: 'rompiBatu', name: 'Rompi Batu', cost: { batu: 6, kulit: 2 }, desc: 'Pelindung · dmg musuh -35%', bench: 2, slot: 'armor',
@@ -285,7 +279,7 @@ let day = 1, dayTime = 0;
 let bram = { x: CAMP.x + 30, y: CAMP.y, hp: 100, maxHp: 100, atk: 5, lvl: 1, xp: 0, cd: 0 };
 let sari = { x: CAMP.x - 30, y: CAMP.y, cd: 0 };
 let needs = { lapar: 80, haus: 80, energi: 90, takut: 10 };
-let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, kristal: 0, makanan: 2, air: 2, perban: 1 };
+let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, kristal: 0, makanan: 2, air: 2, perban: 1, peluru: 60, koin: 0 };
 let equip = { weapon: null, armor: null };
 let bench = false, benchLvl = 0;
 let craftOpen = false;
@@ -305,12 +299,17 @@ let fireLeft = 0;
 let gather = { t: 0, kind: null, node: null };
 let gameOver = false;
 let atkTarget = null;
+let gun = {id:'pistol',name:'Pistol',icon:'🔫',damage:7,range:340,rate:0.72};
+let gunCd=0,sariMolotovCd=2,bullets=[],fireZones=[];
 let jv = { x: 0, y: 0 };
 const keys = {};
 let flags = { night: false, lowHp: false, lapar: false, haus: false, takut: false, nearAlert: false, taunt: false };
 let lastCrowd = 0;
 
-function totalAtk() { return bram.atk + (equip.weapon ? equip.weapon.atk : 0) + skills.power * 2; }
+function totalAtk() { return bram.atk + skills.power * 2; }
+const GUNS=[{id:'pistol',name:'Pistol',icon:'🔫',damage:7,range:340,rate:.72},{id:'rifle',name:'Rifle',icon:'🎯',damage:13,range:430,rate:1.05,cost:{koin:500,kayu:20,batu:18,kulit:8}},{id:'smg',name:'Submachine Gun',icon:'🔫',damage:8,range:360,rate:.22,cost:{koin:1200,kayu:35,batu:30,kulit:18,inti:2}},{id:'machine',name:'Machine Gun',icon:'💥',damage:11,range:400,rate:.14,cost:{koin:3000,kayu:60,batu:55,kulit:35,inti:8,kristal:5}}];
+function upgradeGun(id){const g=GUNS.find(x=>x.id===id),cur=GUNS.findIndex(x=>x.id===gun.id);if(!g||GUNS.indexOf(g)!==cur+1||!canAfford(g.cost))return;payCost(g.cost);gun={...g};log('🔫 Bram upgrade menjadi '+g.name+'!');sariEvent('Bram upgrade senjata menjadi '+g.name);renderCraft();renderHud();}
+function renderGunUpgrades(){const box=document.getElementById('gunUpgradeList');if(!box)return;const cur=GUNS.findIndex(x=>x.id===gun.id);box.innerHTML=GUNS.slice(1).map((g,i)=>{const cost=Object.keys(g.cost).map(k=>g.cost[k]+' '+(k==='koin'?'Koin':ITEM[k])).join(', ');return '<button class="rbtn '+(i===cur?'up':'')+'" '+(i!==cur||!canAfford(g.cost)?'disabled':'')+' onclick="upgradeGun(\''+g.id+'\')">'+g.icon+' '+g.name+' <small>'+g.damage+' damage · '+(1/g.rate).toFixed(1)+' tembakan/detik · '+cost+'</small></button>';}).join('');}
 function armorRed() { return Math.min(0.75,(equip.armor ? equip.armor.red : 0) + skills.guard * 0.08); }
 
 /* ===== SARI (companion, immortal, tanpa need) ===== */
@@ -454,6 +453,8 @@ function killMonster(m) {
     sariEvent(`${m.n} berhasil dikalahkan`);
     return;
   }
+  inv.koin=(inv.koin||0)+(m.boss?80:m.elite?12:3+Math.floor(rnd()*4));
+  if(rnd()<0.18){inv.peluru=(inv.peluru||0)+5;log('🔸 Menemukan 5 peluru.');}
   if (m.elite && rnd() < 0.5) { inv.inti++; log('💎 Dapat 1 Inti.'); }
   if ((m.biome === 'forest' || m.biome === 'river') && rnd() < 0.4) { inv.kulit++; log('Dapat 1 Kulit.'); }
   if (rnd() < 0.3) { inv.makanan++; log('Dapat 1 Beri.'); }
@@ -623,6 +624,7 @@ function renderCraft() {
     u.onclick = upgradeBench;
     box.appendChild(u);
   }
+  renderGunUpgrades();
   RECIPES.forEach(r => {
     const b = document.createElement('button');
     b.className = 'rbtn';
@@ -639,6 +641,7 @@ function renderCraft() {
   });
 }
 
+function craftAmmo(){const c={kayu:3,batu:2};if(!canAfford(c)){log('Bahan peluru belum cukup.');return;}payCost(c);inv.peluru=(inv.peluru||0)+20;log('🧰 Membuat 20 peluru.');renderHud();}
 function upgradeBench() {
   if (benchLvl >= 2 || !canAfford(BENCH2_COST)) return;
   payCost(BENCH2_COST);
@@ -680,7 +683,7 @@ function isTasOpen() {
 function renderTas() {
   const useBtn = (k, label) =>
     `<button onclick="useItem('${k}')" ${(inv[k] || 0) <= 0 ? 'disabled' : ''}>${label}</button>`;
-  const w = equip.weapon ? `${equip.weapon.icon} ${equip.weapon.name} (ATK +${equip.weapon.atk})` : 'Tangan kosong';
+  const w = `${gun.icon} ${gun.name} · ${gun.damage} dmg`;
   const a = equip.armor ? `${equip.armor.icon} ${equip.armor.name} (-${Math.round(equip.armor.red * 100)}% dmg)` : 'Tanpa pelindung';
   document.getElementById('tasBody').innerHTML = `
     <div class="tas-sec">Bram</div>
@@ -689,7 +692,7 @@ function renderTas() {
     <div class="tas-row"><span>Serangan total</span><span>${totalAtk()}</span></div>
     <div class="tas-row"><span>XP</span><span>${bram.xp} / ${bram.lvl * 25}</span></div>
     <div class="tas-sec">Perlengkapan</div>
-    <div class="tas-row"><span>Senjata</span><span>${w}</span></div>
+    <div class="tas-row"><span>Senjata Bram</span><span>${w}</span></div><div class="tas-row"><span>Peluru</span><span>${inv.peluru||0}</span></div><div class="tas-row"><span>Koin</span><span>${inv.koin||0}</span></div>
     <div class="tas-row"><span>Baju</span><span>${a}</span></div>
     <div class="tas-sec">Sari (companion)</div>
     <div class="tas-row"><span>Serangan</span><span>${Math.round(totalAtk() / 2)} · immortal</span></div>
@@ -852,7 +855,7 @@ function saveGame(showMessage=false) {
   try {
     const data = {
       day,dayTime,bram,sari,needs,inv,equip,bench,benchLvl,mons,nodes,
-      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,skillPoints,skills,pet,worldRndState:'fixed'
+      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,skillPoints,skills,pet,gun,worldRndState:'fixed'
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     if(showMessage) log('💾 Progres berhasil disimpan di perangkat.');
@@ -881,7 +884,7 @@ function loadGame(showMessage=false) {
     if(d.storage) Object.assign(storage,d.storage);
     if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
     dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
-    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;
+    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};inv.peluru=inv.peluru||0;inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
@@ -929,19 +932,7 @@ function update(dt) {
     if (gather.t > 0) { gather = { t: 0, kind: null, node: null }; log('Pengumpulan dibatalkan karena bergerak.'); }
   }
 
-  // Bram mengejar target serangan yang dipilih
-  if (atkTarget) {
-    const ok = mons.includes(atkTarget) && dist(atkTarget, bram) < 380 && !moving;
-    if (!ok) atkTarget = null;
-    else {
-      const dx = atkTarget.x - bram.x, dy = atkTarget.y - bram.y, d = Math.hypot(dx, dy);
-      if (d > 45) {
-        bram.x = clamp(bram.x + dx / d * 95 * dt, 20, W - 20);
-        bram.y = clamp(bram.y + dy / d * 95 * dt, 20, H - 20);
-        needs.energi -= 0.3 * dt;
-      }
-    }
-  }
+  // Bram tetap di posisi pemain dan menembak otomatis dari jarak jauh.
 
   if (craftOpen && dist(bram, CAMP) >= CAMP_R) closeCraft();
   if(document.getElementById("merchant").classList.contains("show")&&dist(bram,MERCHANT)>140)closeMerchant();
@@ -1018,17 +1009,13 @@ function update(dt) {
   // Monster biasa yang terlalu jauh dihapus, boss tetap di tempat
   mons = mons.filter(m => m.boss || dist(m, bram) < 1400);
 
-  // Serangan Bram dan Sari ke monster terdekat
-  bram.cd -= dt;
-  if (bram.cd <= 0) {
-    const t = mons.filter(m => dist(m, bram) < 55).sort((a, b) => dist(a, bram) - dist(b, bram))[0];
-    if (t) { t.hp -= totalAtk(); bram.cd = 0.8; }
-  }
-  sari.cd -= dt;
-  if (sari.cd <= 0) {
-    const t = mons.filter(m => dist(m, sari) < 50).sort((a, b) => dist(a, sari) - dist(b, sari))[0];
-    if (t) { t.hp -= totalAtk() / 2; sari.cd = 0.8; }
-  }
+  // Senjata api Bram menembak otomatis ke monster terdekat dalam jangkauan.
+  gunCd=Math.max(0,gunCd-dt);const gt=mons.filter(m=>dist(m,bram)<=gun.range).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];
+  if(gt&&gunCd<=0&&(inv.peluru||0)>0){inv.peluru--;gunCd=gun.rate;bullets.push({x:bram.x,y:bram.y,target:gt,damage:gun.damage+skills.power*2,speed:520});}
+  for(const b of bullets){if(!mons.includes(b.target)){b.dead=true;continue;}const dx=b.target.x-b.x,dy=b.target.y-b.y,d=Math.hypot(dx,dy)||1,step=Math.min(d,b.speed*dt);b.x+=dx/d*step;b.y+=dy/d*step;if(d<12){b.target.hp-=b.damage;b.dead=true;spawnBurst(b.x,b.y,3,'#ffe08a');}}bullets=bullets.filter(b=>!b.dead);
+  // Sari melontarkan Molotov otomatis dengan cooldown 7 detik.
+  sariMolotovCd-=dt;if(sariMolotovCd<=0){const st=mons.filter(m=>dist(m,sari)<300).sort((a,b)=>dist(a,sari)-dist(b,sari))[0];if(st){fireZones.push({x:st.x,y:st.y,r:76,life:4,tick:0});spawnBurst(st.x,st.y,18,'#ff8b32');log('💣 Sari melempar Molotov!');sariEvent('Sari melempar bom Molotov ke monster');sariMolotovCd=7;}else sariMolotovCd=.5;}
+  for(const f of fireZones){f.life-=dt;f.tick-=dt;if(f.tick<=0){f.tick=.5;for(const m of mons)if(dist(m,f)<f.r)m.hp-=7;spawnBurst(f.x+(rnd()-.5)*45,f.y+(rnd()-.5)*45,2,'#ff9b36');}}fireZones=fireZones.filter(f=>f.life>0);
   for (const m of [...mons]) if (m.hp <= 0) killMonster(m);
 
   // Boss hidup lagi setelah 3 menit
@@ -1188,6 +1175,9 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
+  // Visual peluru Bram dan kobaran Molotov Sari.
+  for(const b of bullets){ctx.font='17px sans-serif';ctx.fillText('🔸',b.x-cam.x,b.y-cam.y);}
+  for(const f of fireZones){ctx.save();ctx.globalAlpha=Math.max(.25,f.life/4);ctx.fillStyle='#ff6b20';ctx.beginPath();ctx.arc(f.x-cam.x,f.y-cam.y,f.r,0,Math.PI*2);ctx.fill();ctx.font='27px sans-serif';ctx.fillText('🔥',f.x-cam.x,f.y-cam.y);ctx.restore();}
   // Monster (boss dan elite lebih besar)
   for (const m of mons) {
     const sx = m.x - cam.x, sy = m.y - cam.y;
@@ -1207,7 +1197,7 @@ function draw() {
   ctx.fillText('👧', sari.x - cam.x, sari.y - cam.y);
   ctx.fillText('🧑', bram.x - cam.x, bram.y - cam.y);
   if(pet){ctx.font='27px sans-serif';ctx.fillText(pet.icon,pet.x-cam.x,pet.y-cam.y);}
-  if (equip.weapon) { ctx.font = '20px sans-serif'; ctx.fillText(equip.weapon.icon, bram.x + 18 - cam.x, bram.y - 6 - cam.y); }
+  ctx.font='20px sans-serif';ctx.fillText(gun.icon,bram.x+18-cam.x,bram.y-6-cam.y);
   if (equip.armor) { ctx.font = '18px sans-serif'; ctx.fillText(equip.armor.icon, bram.x - 18 - cam.x, bram.y + 8 - cam.y); }
 
   // Malam
@@ -1282,14 +1272,14 @@ function renderHud() {
   const xpNeed = bram.lvl * 25;
   setBar('nb-xp', bram.xp / xpNeed * 100);
   document.getElementById('nv-xp').textContent = `${bram.xp}/${xpNeed}`;
-  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · Poin skill ${skillPoints} · ${pet?pet.name:'Tanpa peliharaan'}`;
+  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · ${gun.name} · 🔸 ${inv.peluru||0} · Poin skill ${skillPoints} · ${pet?pet.name:'Tanpa peliharaan'}`;
 
   const ab = document.getElementById('btnAksi');
   ab.disabled = gameOver;
   document.getElementById('aksiTxt').textContent = gather.t > 0 ? `${gather.t.toFixed(1)}s` : aksiLabel();
 
   document.getElementById('inv').textContent =
-    `🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
+    `🔫 ${gun.name} · 🔸 ${inv.peluru||0} peluru · 🪙 ${inv.koin||0} · 🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
 
   if (craftOpen) renderCraft();
   if(document.getElementById("merchant").classList.contains("show"))renderMerchant();
@@ -1334,7 +1324,7 @@ cv.addEventListener('pointerdown', e => {
     const d = Math.hypot(m.x - wx, m.y - wy);
     if (d < bd) { bd = d; best = m; }
   }
-  if (best && !gameOver) { atkTarget = best; log(`Bram menyerang ${best.n}!`); }
+  if (best && !gameOver) { log(`${best.n} terdeteksi. Bram menembak otomatis.`); }
 });
 
 /* ===== LOOP ===== */
