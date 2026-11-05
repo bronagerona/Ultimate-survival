@@ -62,6 +62,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
 .tas-row{display:flex;justify-content:space-between;align-items:center;background:#22402c;border-radius:10px;padding:8px 10px;margin-top:5px;font-size:14px}
 .tas-row button{background:var(--acc);color:#0b1a10;border:0;border-radius:8px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer}
 .tas-row button:disabled{opacity:.4}
+.build-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.build-card{background:#22402c;border:1px solid #52785d;border-radius:11px;padding:10px;color:var(--ink);text-align:left;font:inherit}
+.build-card:disabled{opacity:.42}
+.build-card b{display:block;font-size:14px}
+.build-card small{display:block;color:var(--mut);font-size:11px;margin-top:4px}
+.build-card.full{grid-column:1/-1}
+.memory-note{font-size:12px;color:var(--mut);line-height:1.45;padding:7px 9px;background:#142219;border-radius:8px;margin-top:5px}
 #over{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .over-box{background:var(--panel);border:1px solid var(--warn);border-radius:16px;padding:20px;text-align:center;max-width:320px}
 .over-box h2{margin:0 0 8px;color:#ff8a8a}
@@ -85,6 +92,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
     <button onclick="saveGame(true)">💾 Simpan</button>
     <button onclick="loadGame(true)">📂 Muat</button>
     <button onclick="toggleQuest()">📜 Misi</button>
+    <button onclick="openBuild()">🏗️ Bangun</button>
   </div>
   <div id="questPanel" class="panel quest-panel">
     <b>📜 Misi Bertahan Hidup</b>
@@ -129,6 +137,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
     <h3>🎒 Karakter & Tas</h3>
     <div id="tasBody"></div>
     <button class="craft-close" onclick="closeTas()">Tutup</button>
+  </div>
+</div>
+
+<div id="build" class="craft">
+  <div class="craft-box">
+    <h3>🏗️ Bangun Markas</h3>
+    <div id="buildList"></div>
+    <button class="craft-close" onclick="closeBuild()">Tutup</button>
   </div>
 </div>
 
@@ -179,8 +195,9 @@ async function testAI() {
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const rnd = Math.random;
-const ITEM = { kayu: 'Kayu', batu: 'Batu', kulit: 'Kulit', inti: 'Inti', makanan: 'Beri', air: 'Air', perban: 'Perban' };
+const ITEM = { kayu: 'Kayu', batu: 'Batu', kulit: 'Kulit', inti: 'Inti', kristal: 'Kristal', makanan: 'Beri', air: 'Air', perban: 'Perban' };
 const BIOME_NAME = { camp: 'Kamp (aman)', forest: 'Hutan', river: 'Sungai', ruin: 'Reruntuhan', cave: 'Gua' };
+const DUNGEON = { x: 350, y: 2050 };
 const BIOME_COL = { camp: '#6b5a3a', forest: '#2e5b34', river: '#23506b', ruin: '#4a4a52', cave: '#3d2b55' };
 
 /* ===== DUNIA ===== */
@@ -214,7 +231,8 @@ const NODE = {
   tree:  { ic: '🌳', item: 'kayu',    t: 2.5, biome: 'forest', n: 90 },
   bush:  { ic: '🫐', item: 'makanan', t: 2,   biome: 'forest', n: 50 },
   rock:  { ic: '🪨', item: 'batu',    t: 3,   biome: 'cave',   n: 40 },
-  chest: { ic: '📦', item: 'perban',  t: 3,   biome: 'ruin',   n: 14 }
+  chest: { ic: '📦', item: 'perban',  t: 3,   biome: 'ruin',   n: 14 },
+  crystal: { ic: '💎', item: 'kristal', t: 3.5, biome: 'cave', n: 18 }
 };
 const ACT_NAME = { tree: 'Tebang pohon', bush: 'Petik beri', rock: 'Pecah batu', chest: 'Buka peti' };
 const nodes = [];
@@ -271,6 +289,11 @@ let inv = { kayu: 3, batu: 0, kulit: 0, inti: 0, makanan: 2, air: 2, perban: 1 }
 let equip = { weapon: null, armor: null };
 let bench = false, benchLvl = 0;
 let craftOpen = false;
+let buildings = { hut:false, fence:false, tower:false, chest:false };
+let storage = { kayu:0, batu:0, kulit:0, inti:0, kristal:0, makanan:0, air:0, perban:0 };
+let towerClock = 0;
+let sariMemories = [];
+let dungeonActive = false, dungeonCleared = false;
 let mons = [];
 let monId = 0;
 let spawnTimer = 0;
@@ -292,12 +315,18 @@ let pendingEv = null, sariBusy = false, lastSari = 0;
 const sariQueue = [];
 function sariEvent(ev) {
   if (!ev) return;
-  if (sariQueue.length < 8 && sariQueue[sariQueue.length - 1] !== ev) sariQueue.push(String(ev));
+  const note = String(ev);
+  if (sariMemories[sariMemories.length - 1] !== note) {
+    sariMemories.push(note);
+    if (sariMemories.length > 8) sariMemories.shift();
+  }
+  if (sariQueue.length < 8 && sariQueue[sariQueue.length - 1] !== note) sariQueue.push(note);
   pendingEv = sariQueue[0] || null;
 }
 
 function sariSystem() {
-  return BASE_SARI + (bram.hp < 40 || needs.takut > 70 ? ' Suaramu tegang.' : ' Suaramu tenang.');
+  const memory = sariMemories.length ? ' Ingatan kejadian sebelumnya: ' + sariMemories.slice(-4).join('; ') + '.' : '';
+  return BASE_SARI + memory + (bram.hp < 40 || needs.takut > 70 ? ' Suaramu tegang.' : ' Suaramu tenang.');
 }
 
 async function sendSari() {
@@ -374,6 +403,18 @@ function spawnMonster() {
   if (elite) log('👑 Elite muncul di malam hari!');
 }
 
+function spawnDungeonBoss() {
+  if (mons.some(m => m.dungeonBoss)) return;
+  dungeonActive = true;
+  mons.push({
+    id: ++monId, n: 'Raja Gua', ic: '👹', x: DUNGEON.x + 65, y: DUNGEON.y,
+    biome: 'cave', hp: 560, max: 560, dmg: 12, xp: 100, sp: 38,
+    cd: 0, target: 'bram', elite: false, boss: true, dungeonBoss: true,
+    key: 'rajaGua', enraged: false
+  });
+  log('💀 RAJA GUA muncul! Siapkan perlengkapanmu!');
+  sariEvent('Raja Gua muncul di Dungeon Kristal');
+}
 function spawnBoss(d) {
   mons.push({
     id: ++monId, n: d.n, ic: d.ic, x: d.x, y: d.y, biome: 'boss',
@@ -390,6 +431,17 @@ function killMonster(m) {
   bram.xp += m.xp;
   log(`${m.ic} ${m.n} tumbang! +${m.xp} XP`);
   sariEvent(`${m.n} tumbang`);
+  if (m.dungeonBoss) {
+    dungeonCleared = true;
+    dungeonActive = false;
+    inv.kristal += 5;
+    inv.inti += 4;
+    inv.kulit += 5;
+    bram.xp += 100;
+    log('💎 Raja Gua dikalahkan! +5 Kristal, +4 Inti, +5 Kulit, +100 XP.');
+    sariEvent('Raja Gua berhasil dikalahkan dan dungeon kristal ditaklukkan');
+    return;
+  }
   if (m.boss) {
     inv.inti += 2;
     inv.kulit += 3;
@@ -418,6 +470,7 @@ function checkLevel() {
 /* ===== AKSI (satu tombol untuk semua) ===== */
 // Urutan prioritas: monster > sumber daya > air > meja kerja / bangun meja > api
 function aksiTarget() {
+  if (dist(bram, DUNGEON) < 105) return { type: dungeonCleared ? 'dungeonDone' : 'dungeon' };
   const m = mons.filter(x => dist(x, bram) < 300).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
   if (m) return { type: 'mon', m };
   const n = nodes.filter(x => x.cd <= 0 && dist(x, bram) < 70).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
@@ -435,6 +488,8 @@ function aksiLabel() {
   const t = aksiTarget();
   if (!t) return 'Aksi';
   if (t.type === 'mon') return 'Serang ' + t.m.n;
+  if (t.type === 'dungeon') return 'Masuk Dungeon';
+  if (t.type === 'dungeonDone') return 'Dungeon selesai';
   if (t.type === 'node') return ACT_NAME[t.n.kind];
   if (t.type === 'air') return 'Ambil air';
   if (t.type === 'bench') return 'Meja kerja';
@@ -447,6 +502,8 @@ function aksi() {
   const t = aksiTarget();
   if (!t) { log('Tidak ada yang bisa dilakukan di sini.'); return; }
   if (t.type === 'mon') { atkTarget = t.m; log(`Bram menyerang ${t.m.n}!`); return; }
+  if (t.type === 'dungeon') { spawnDungeonBoss(); return; }
+  if (t.type === 'dungeonDone') { log('🏆 Dungeon Kristal sudah ditaklukkan.'); return; }
   if (t.type === 'bench') { openCraft(); return; }
   if (t.type === 'build') {
     inv.kayu -= 4;
@@ -604,6 +661,8 @@ function renderTas() {
     <div class="tas-row"><span>Baju</span><span>${a}</span></div>
     <div class="tas-sec">Sari (companion)</div>
     <div class="tas-row"><span>Serangan</span><span>${Math.round(totalAtk() / 2)} · immortal</span></div>
+    <div class="tas-sec">🧠 Ingatan Sari</div>
+    ${sariMemories.length ? sariMemories.slice(-5).map(x=>'<div class="memory-note">• '+x+'</div>').join('') : '<div class="memory-note">Belum ada kenangan petualangan.</div>'}
     <div class="tas-sec">Inventaris</div>
     <div class="tas-row"><span>🪵 Kayu</span><span>${inv.kayu}</span></div>
     <div class="tas-row"><span>🪨 Batu</span><span>${inv.batu}</span></div>
@@ -626,6 +685,59 @@ let weather = 'cerah', weatherClock = 0, weatherDrops = [];
 let saveClock = 0;
 
 function newGame() { localStorage.removeItem(SAVE_KEY); location.reload(); }
+
+const BUILD_RECIPES = [
+  {id:'hut',name:'Pondok',icon:'🛖',cost:{kayu:12,kulit:4},desc:'Pulihkan HP dan energi lebih cepat saat di kamp.'},
+  {id:'fence',name:'Pagar',icon:'🪵',cost:{kayu:16,batu:6},desc:'Menahan monster agar tidak mudah masuk kamp.'},
+  {id:'tower',name:'Menara penjaga',icon:'🗼',cost:{kayu:14,batu:10},desc:'Menyerang monster yang mendekati kamp.'},
+  {id:'chest',name:'Peti penyimpanan',icon:'📦',cost:{kayu:8,batu:3},desc:'Simpan dan ambil kembali seluruh bahan.'}
+];
+function openBuild() {
+  if (dist(bram,CAMP) >= CAMP_R) { log('🏕️ Bangunan hanya bisa dibuat di area kamp.'); return; }
+  renderBuild();
+  document.getElementById('build').classList.add('show');
+}
+function closeBuild(){document.getElementById('build').classList.remove('show');}
+function renderBuild(){
+  const box=document.getElementById('buildList');
+  box.innerHTML='<p style="font-size:12px;color:var(--mut)">Bangun di area kamp. Bangunan permanen dan tersimpan otomatis.</p><div class="build-grid"></div>';
+  const grid=box.querySelector('.build-grid');
+  BUILD_RECIPES.forEach(r=>{
+    const b=document.createElement('button');b.className='build-card';
+    const cost=Object.keys(r.cost).map(k=>r.cost[k]+' '+ITEM[k]).join(', ');
+    b.innerHTML='<b>'+r.icon+' '+r.name+'</b><small>'+ (buildings[r.id]?'✅ Sudah dibangun':r.desc+' · '+cost)+'</small>';
+    b.disabled=buildings[r.id]||!canAfford(r.cost);b.onclick=()=>buildStructure(r.id);grid.appendChild(b);
+  });
+  const chest=document.createElement('button');chest.className='build-card full';
+  chest.innerHTML='<b>📦 Peti: '+(buildings.chest?'tersedia':'belum dibuat')+'</b><small>Isi tas: '+Object.keys(storage).map(k=>ITEM[k]+': '+storage[k]).join(' · ')+'</small>';
+  chest.disabled=!buildings.chest;chest.onclick=()=>{depositStorage();renderBuild();};
+  grid.appendChild(chest);
+  const take=document.createElement('button');take.className='build-card full';take.innerHTML='<b>↩️ Ambil semua dari peti</b><small>Kembalikan seluruh bahan ke tas.</small>';
+  take.disabled=!buildings.chest||!Object.values(storage).some(v=>v>0);take.onclick=()=>{withdrawStorage();renderBuild();};grid.appendChild(take);
+}
+function buildStructure(id){
+  const r=BUILD_RECIPES.find(x=>x.id===id);if(!r||buildings[id]||!canAfford(r.cost))return;
+  payCost(r.cost);buildings[id]=true;
+  log(r.icon+' '+r.name+' berhasil dibangun!');
+  sariEvent(r.name+' selesai dibangun di kamp');
+  spawnBurst(CAMP.x,CAMP.y,18,'#a8e6a1');renderBuild();renderHud();
+}
+function depositStorage(){
+  if(!buildings.chest)return;
+  for(const k in storage){storage[k]+=(inv[k]||0);inv[k]=0;}
+  log('📦 Semua bahan dan persediaan disimpan.');sariEvent('Bram menyimpan barang di peti');
+}
+function withdrawStorage(){
+  if(!buildings.chest)return;
+  for(const k in storage){inv[k]=(inv[k]||0)+storage[k];storage[k]=0;}
+  log('🎒 Semua isi peti diambil.');sariEvent('Bram mengambil barang dari peti');
+}
+function updateStructures(dt){
+  if(!buildings.tower)return;
+  towerClock-=dt;if(towerClock>0)return;towerClock=1.4;
+  const target=mons.filter(m=>!m.dungeonBoss&&dist(m,CAMP)<300).sort((a,b)=>dist(a,CAMP)-dist(b,CAMP))[0];
+  if(target){target.hp-=12;spawnBurst(target.x,target.y,3,'#ffd36b');if(target.hp<=0)killMonster(target);}
+}
 function toggleQuest() {
   questVisible = !questVisible;
   document.getElementById('questPanel').classList.toggle('hidden', !questVisible);
@@ -703,7 +815,7 @@ function saveGame(showMessage=false) {
   try {
     const data = {
       day,dayTime,bram,sari,needs,inv,equip,bench,benchLvl,mons,nodes,
-      bossTimer,fireLeft,quest,weather,worldRndState:'fixed'
+      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,worldRndState:'fixed'
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     if(showMessage) log('💾 Progres berhasil disimpan di perangkat.');
@@ -728,6 +840,10 @@ function loadGame(showMessage=false) {
     if(d.bossTimer) Object.assign(bossTimer,d.bossTimer);
     fireLeft=d.fireLeft||0;quest=Object.assign({wood:0,kills:0},d.quest||{});
     weather=d.weather||'cerah';
+    if(d.buildings) Object.assign(buildings,d.buildings);
+    if(d.storage) Object.assign(storage,d.storage);
+    if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
+    dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
@@ -743,6 +859,7 @@ function updateSave(dt) {
 const baseUpdate = update;
 update = function(dt) {
   baseUpdate(dt);
+  updateStructures(dt);
   updateEffects(dt);
   updateSave(dt);
   renderQuest();
@@ -842,7 +959,9 @@ function update(dt) {
     const dT = Math.min(dB, dS);
     if (dT < 170) {
       const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy) || 1;
-      if (d > 28) {
+      if (buildings.fence && tgt === bram && dist(tgt, CAMP) < 220 && dist(m, CAMP) > CAMP_R + 24) {
+        // Pagar menahan monster agar tidak langsung menerobos kamp.
+      } else if (d > 28) {
         m.x += dx / d * m.sp * dt;
         m.y += dy / d * m.sp * dt;
       } else {
@@ -912,7 +1031,8 @@ function update(dt) {
   needs.haus -= 0.5 * dt;
   const inCamp = dist(bram, CAMP) < CAMP_R;
   if (inCamp) {
-    needs.energi += 0.8 * dt;
+    needs.energi += buildings.hut ? 1.8 * dt : 0.8 * dt;
+    if (buildings.hut) bram.hp = Math.min(bram.maxHp, bram.hp + 0.25 * dt);
     needs.takut -= 0.3 * dt;
     if (fireLeft > 0) needs.takut -= 0.4 * dt;
   } else {
@@ -993,6 +1113,13 @@ function draw() {
   // Kamp
   ctx.font = '36px sans-serif';
   ctx.fillText('⛺', CAMP.x - cam.x, CAMP.y - cam.y);
+  if (buildings.hut) { ctx.font='30px sans-serif';ctx.fillText('🛖',CAMP.x+25-cam.x,CAMP.y+62-cam.y); }
+  if (buildings.fence) {
+    ctx.strokeStyle='#c69a5b';ctx.lineWidth=7;ctx.setLineDash([12,8]);
+    ctx.beginPath();ctx.arc(CAMP.x-cam.x,CAMP.y-cam.y,205,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  }
+  if (buildings.tower) { ctx.font='30px sans-serif';ctx.fillText('🗼',CAMP.x-75-cam.x,CAMP.y-58-cam.y); }
+  if (buildings.chest) { ctx.font='25px sans-serif';ctx.fillText('📦',CAMP.x+75-cam.x,CAMP.y+55-cam.y); }
   if (bench) {
     ctx.font = '30px sans-serif';
     ctx.fillText('🛠️', CAMP.x + 70 - cam.x, CAMP.y - 30 - cam.y);
@@ -1005,6 +1132,9 @@ function draw() {
     ctx.fillText('🔥', CAMP.x - 50 - cam.x, CAMP.y + 30 - cam.y);
   }
 
+  // Portal Dungeon Kristal
+  ctx.font='34px sans-serif';ctx.fillText(dungeonCleared?'🏆':'🌀',DUNGEON.x-cam.x,DUNGEON.y-cam.y);
+  ctx.font='bold 10px sans-serif';ctx.fillStyle='#e7d8ff';ctx.fillText('DUNGEON',DUNGEON.x-cam.x,DUNGEON.y-cam.y+29);
   // Sumber daya
   for (const n of nodes) {
     const sx = n.x - cam.x, sy = n.y - cam.y;
@@ -1115,9 +1245,10 @@ function renderHud() {
   document.getElementById('aksiTxt').textContent = gather.t > 0 ? `${gather.t.toFixed(1)}s` : aksiLabel();
 
   document.getElementById('inv').textContent =
-    `🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
+    `🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
 
   if (craftOpen) renderCraft();
+  if (document.getElementById('build').classList.contains('show')) renderBuild();
   if (isTasOpen()) renderTas();
 }
 
