@@ -434,6 +434,9 @@ function killMonster(m) {
   bram.xp += m.xp;
   log(`${m.ic} ${m.n} tumbang! +${m.xp} XP`);
   sariEvent(`${m.n} tumbang`);
+  const coinReward=m.dungeonBoss?120:m.boss?80:m.elite?12:3+Math.floor(rnd()*4);
+  inv.koin=(inv.koin||0)+coinReward;
+  log('🪙 Mendapat '+coinReward+' koin.');
   if (m.dungeonBoss) {
     dungeonCleared = true;
     dungeonActive = false;
@@ -453,7 +456,6 @@ function killMonster(m) {
     sariEvent(`${m.n} berhasil dikalahkan`);
     return;
   }
-  inv.koin=(inv.koin||0)+(m.boss?80:m.elite?12:3+Math.floor(rnd()*4));
   if(rnd()<0.18){inv.peluru=(inv.peluru||0)+5;log('🔸 Menemukan 5 peluru.');}
   if (m.elite && rnd() < 0.5) { inv.inti++; log('💎 Dapat 1 Inti.'); }
   if ((m.biome === 'forest' || m.biome === 'river') && rnd() < 0.4) { inv.kulit++; log('Dapat 1 Kulit.'); }
