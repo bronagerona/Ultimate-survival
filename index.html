@@ -631,7 +631,6 @@ function renderCraft() {
   });
 }
 
-function craftAmmo(){const c={kayu:3,batu:2};if(!canAfford(c)){log('Bahan peluru belum cukup.');return;}payCost(c);inv.peluru=(inv.peluru||0)+20;log('🧰 Membuat 20 peluru.');renderHud();}
 function upgradeBench() {
   if (benchLvl >= 2 || !canAfford(BENCH2_COST)) return;
   payCost(BENCH2_COST);
