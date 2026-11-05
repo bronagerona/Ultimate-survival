@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bram & Sari - Living World v2.0</title>
+<title>Bram & Sari - Survival Evolution v2.1</title>
 <style>
 :root{--bg:#0f1a14;--panel:#18271e;--ink:#e9f3ea;--mut:#9bb5a0;--line:#2c4534;--acc:#5fbf7a;--warn:#e5484d;color-scheme:dark}
 *{box-sizing:border-box}
@@ -68,7 +68,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
 .build-card b{display:block;font-size:14px}
 .build-card small{display:block;color:var(--mut);font-size:11px;margin-top:4px}
 .build-card.full{grid-column:1/-1}
-.memory-note{font-size:12px;color:var(--mut);line-height:1.45;padding:7px 9px;background:#142219;border-radius:8px;margin-top:5px}
+.memory-note{font-size:12px;color:var(--mut);line-height:1.45;padding:7px 9px;background:#142219;border-radius:8px;margin-top:5px}.skill-card{display:block;width:100%;text-align:left;margin-top:7px;padding:10px;border-radius:10px;background:#243c50;border:1px solid #52758e;color:var(--ink);font:inherit}.skill-card:disabled{opacity:.45}.skill-card small{display:block;color:var(--mut);font-size:11px;margin-top:3px}
 #over{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .over-box{background:var(--panel);border:1px solid var(--warn);border-radius:16px;padding:20px;text-align:center;max-width:320px}
 .over-box h2{margin:0 0 8px;color:#ff8a8a}
@@ -92,7 +92,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
     <button onclick="saveGame(true)">💾 Simpan</button>
     <button onclick="loadGame(true)">📂 Muat</button>
     <button onclick="toggleQuest()">📜 Misi</button>
-    <button onclick="openBuild()">🏗️ Bangun</button>
+    <button onclick="openBuild()">🏗️ Bangun</button><button onclick="openMerchant()">🛒 Dagang</button><button onclick="openSkills()">🌟 Skill</button>
   </div>
   <div id="questPanel" class="panel quest-panel">
     <b>📜 Misi Bertahan Hidup</b>
@@ -140,7 +140,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
   </div>
 </div>
 
-<div id="build" class="craft">
+<div id="merchant" class="craft"><div class="craft-box"><h3>🧑‍🌾 Pedagang Kelana</h3><div id="merchantList"></div><button class="craft-close" onclick="closeMerchant()">Tutup</button></div></div><div id="skills" class="craft"><div class="craft-box"><h3>🌟 Skill Bram</h3><div id="skillList"></div><button class="craft-close" onclick="closeSkills()">Tutup</button></div></div><div id="build" class="craft">
   <div class="craft-box">
     <h3>🏗️ Bangun Markas</h3>
     <div id="buildList"></div>
@@ -292,6 +292,10 @@ let craftOpen = false;
 let buildings = { hut:false, fence:false, tower:false, chest:false };
 let storage = { kayu:0, batu:0, kulit:0, inti:0, kristal:0, makanan:0, air:0, perban:0 };
 let towerClock = 0;
+let skillPoints = 0;
+let skills = {power:0,guard:0,scavenger:0};
+let pet = null, petCd = 0;
+const MERCHANT = {x:CAMP.x+115,y:CAMP.y-85};
 let sariMemories = [];
 let dungeonActive = false, dungeonCleared = false;
 let mons = [];
@@ -306,8 +310,8 @@ const keys = {};
 let flags = { night: false, lowHp: false, lapar: false, haus: false, takut: false, nearAlert: false, taunt: false };
 let lastCrowd = 0;
 
-function totalAtk() { return bram.atk + (equip.weapon ? equip.weapon.atk : 0); }
-function armorRed() { return equip.armor ? equip.armor.red : 0; }
+function totalAtk() { return bram.atk + (equip.weapon ? equip.weapon.atk : 0) + skills.power * 2; }
+function armorRed() { return Math.min(0.75,(equip.armor ? equip.armor.red : 0) + skills.guard * 0.08); }
 
 /* ===== SARI (companion, immortal, tanpa need) ===== */
 const BASE_SARI = 'Kamu Sari, companion Bram di hutan survival. Balas 1 kalimat pendek bahasa Indonesia gaul (maksimal 8 kata). Jangan pakai tanda kutip.';
@@ -460,6 +464,7 @@ function checkLevel() {
     bram.xp -= bram.lvl * 25;
     bram.lvl++;
     bram.maxHp += 10;
+    skillPoints++;
     bram.atk += 1;
     bram.hp += 10;
     log(`⭐ Bram naik ke level ${bram.lvl}!`);
@@ -471,6 +476,9 @@ function checkLevel() {
 // Urutan prioritas: monster > sumber daya > air > meja kerja / bangun meja > api
 function aksiTarget() {
   if (dist(bram, DUNGEON) < 105) return { type: dungeonCleared ? 'dungeonDone' : 'dungeon' };
+  if (dist(bram, MERCHANT) < 85) return {type:'merchant'};
+  const tameTarget=mons.filter(m=>!m.boss&&!m.elite&&['Serigala','Babi hutan'].includes(m.n)&&dist(m,bram)<65).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];
+  if (tameTarget && inv.makanan>0 && !pet) return {type:'tame',m:tameTarget};
   const m = mons.filter(x => dist(x, bram) < 300).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
   if (m) return { type: 'mon', m };
   const n = nodes.filter(x => x.cd <= 0 && dist(x, bram) < 70).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
@@ -489,6 +497,8 @@ function aksiLabel() {
   if (!t) return 'Aksi';
   if (t.type === 'mon') return 'Serang ' + t.m.n;
   if (t.type === 'dungeon') return 'Masuk Dungeon';
+  if (t.type === 'merchant') return 'Bicara pedagang';
+  if (t.type === 'tame') return 'Jinakkan '+t.m.n;
   if (t.type === 'dungeonDone') return 'Dungeon selesai';
   if (t.type === 'node') return ACT_NAME[t.n.kind];
   if (t.type === 'air') return 'Ambil air';
@@ -503,6 +513,8 @@ function aksi() {
   if (!t) { log('Tidak ada yang bisa dilakukan di sini.'); return; }
   if (t.type === 'mon') { atkTarget = t.m; log(`Bram menyerang ${t.m.n}!`); return; }
   if (t.type === 'dungeon') { spawnDungeonBoss(); return; }
+  if (t.type === 'merchant') { openMerchant(); return; }
+  if (t.type === 'tame') { tameAnimal(t.m); return; }
   if (t.type === 'dungeonDone') { log('🏆 Dungeon Kristal sudah ditaklukkan.'); return; }
   if (t.type === 'bench') { openCraft(); return; }
   if (t.type === 'build') {
@@ -530,6 +542,14 @@ function aksi() {
   log(`Mulai ${ACT_NAME[t.n.kind].toLowerCase()}...`);
 }
 
+function tameAnimal(m) {
+  if (pet || inv.makanan<=0 || !mons.includes(m)) return;
+  inv.makanan--; mons=mons.filter(x=>x!==m);
+  pet={name:m.n,icon:m.n==='Serigala'?'🐺':'🐗',hp:100,maxHp:100,atk:m.n==='Serigala'?8:5,x:m.x,y:m.y};
+  log('🐾 '+pet.name+' berhasil dijinakkan dan menjadi teman!');
+  sariEvent('Bram menjinakkan '+pet.name+' sebagai hewan peliharaan');renderHud();
+}
+
 function finishGather() {
   if (gather.kind === 'river') {
     inv.air++;
@@ -542,6 +562,7 @@ function finishGather() {
     } else {
       const item = NODE[gather.kind].item;
       inv[item]++;
+      if (skills.scavenger>0 && rnd()<skills.scavenger*0.12) { inv[item]++; log('🪓 Skill Pengumpul: bonus 1 '+ITEM[item]+'!'); }
       if (gather.kind === 'tree') quest.wood++;
       spawnBurst(gather.node.x, gather.node.y, 7, '#a8e6a1');
       log(`Dapat 1 ${ITEM[item]}.`);
@@ -560,6 +581,17 @@ function useItem(k) {
 }
 
 /* ===== MEJA KERJA ===== */
+const SKILL_DEFS=[{id:"power",name:"Petarung",icon:"⚔️",desc:"Serangan Bram +2 tiap tingkat."},{id:"guard",name:"Tangguh",icon:"🛡️",desc:"Damage masuk berkurang 8% tiap tingkat."},{id:"scavenger",name:"Pengumpul",icon:"🪓",desc:"Peluang bonus bahan saat mengumpulkan."}];
+function openSkills(){renderSkills();document.getElementById("skills").classList.add("show");}
+function closeSkills(){document.getElementById("skills").classList.remove("show");}
+function renderSkills(){const box=document.getElementById("skillList");box.innerHTML="<p>⭐ Poin skill tersedia: <b>"+skillPoints+"</b></p>"+SKILL_DEFS.map(d=>"<button class=\"skill-card\" "+(skillPoints<=0||skills[d.id]>=5?"disabled":"")+" onclick=\"upgradeSkill(\'"+d.id+"\')\"><b>"+d.icon+" "+d.name+" · Lv "+skills[d.id]+"/5</b><small>"+d.desc+" · Gunakan 1 poin</small></button>").join("");}
+function upgradeSkill(id){if(skillPoints<=0||!skills.hasOwnProperty(id)||skills[id]>=5)return;skillPoints--;skills[id]++;log("🌟 Skill "+id+" meningkat ke Lv "+skills[id]+"!");sariEvent("Bram meningkatkan skill "+id);renderSkills();renderHud();}
+const TRADE_ITEMS=[{id:"makanan",name:"Beri",icon:"🫐",cost:{kayu:2},gain:3,desc:"Tukar 2 Kayu untuk 3 Beri"},{id:"air",name:"Air",icon:"💧",cost:{batu:2},gain:3,desc:"Tukar 2 Batu untuk 3 Air"},{id:"perban",name:"Perban",icon:"🩹",cost:{kulit:2},gain:1,desc:"Tukar 2 Kulit untuk 1 Perban"},{id:"inti",name:"Inti",icon:"💎",cost:{kristal:2},gain:1,desc:"Tukar 2 Kristal untuk 1 Inti"}];
+function openMerchant(){if(dist(bram,MERCHANT)>110){log("🧑‍🌾 Pedagang ada di dekat kamp.");return;}renderMerchant();document.getElementById("merchant").classList.add("show");}
+function closeMerchant(){document.getElementById("merchant").classList.remove("show");}
+function renderMerchant(){const box=document.getElementById("merchantList");box.innerHTML="<p>“Ada barang bagus? Kita bisa barter!”</p>"+TRADE_ITEMS.map(t=>"<button class=\"rbtn\" "+(!canAfford(t.cost)?"disabled":"")+" onclick=\"tradeItem(\'"+t.id+"\')\"><b>"+t.icon+" "+t.name+"</b><small>"+t.desc+"</small></button>").join("");}
+function tradeItem(id){const t=TRADE_ITEMS.find(x=>x.id===id);if(!t||!canAfford(t.cost))return;payCost(t.cost);inv[t.id]=(inv[t.id]||0)+t.gain;log("🛒 Barter berhasil: "+t.gain+" "+ITEM[t.id]+".");sariEvent("Bram barter "+t.name+" dengan pedagang");renderMerchant();renderHud();}
+
 function openCraft() {
   craftOpen = true;
   renderCraft();
@@ -661,6 +693,11 @@ function renderTas() {
     <div class="tas-row"><span>Baju</span><span>${a}</span></div>
     <div class="tas-sec">Sari (companion)</div>
     <div class="tas-row"><span>Serangan</span><span>${Math.round(totalAtk() / 2)} · immortal</span></div>
+    <div class="tas-sec">🌟 Skill Bram · Poin ${skillPoints}</div>
+    <div class="tas-row"><span>⚔️ Petarung</span><span>${skills.power}</span></div>
+    <div class="tas-row"><span>🛡️ Tangguh</span><span>${skills.guard}</span></div>
+    <div class="tas-row"><span>🪓 Pengumpul</span><span>${skills.scavenger}</span></div>
+    <div class="tas-row"><span>🐾 Peliharaan</span><span>${pet?pet.icon+" "+pet.name:"Belum ada"}</span></div>
     <div class="tas-sec">🧠 Ingatan Sari</div>
     ${sariMemories.length ? sariMemories.slice(-5).map(x=>'<div class="memory-note">• '+x+'</div>').join('') : '<div class="memory-note">Belum ada kenangan petualangan.</div>'}
     <div class="tas-sec">Inventaris</div>
@@ -815,7 +852,7 @@ function saveGame(showMessage=false) {
   try {
     const data = {
       day,dayTime,bram,sari,needs,inv,equip,bench,benchLvl,mons,nodes,
-      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,worldRndState:'fixed'
+      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,skillPoints,skills,pet,worldRndState:'fixed'
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     if(showMessage) log('💾 Progres berhasil disimpan di perangkat.');
@@ -844,6 +881,7 @@ function loadGame(showMessage=false) {
     if(d.storage) Object.assign(storage,d.storage);
     if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
     dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
+    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
@@ -906,6 +944,10 @@ function update(dt) {
   }
 
   if (craftOpen && dist(bram, CAMP) >= CAMP_R) closeCraft();
+  if(document.getElementById("merchant").classList.contains("show")&&dist(bram,MERCHANT)>140)closeMerchant();
+
+  // Hewan peliharaan mengikuti Bram dan menyerang monster terdekat
+  if(pet){const pd=dist(pet,bram);if(pd>42){const dx=bram.x-pet.x,dy=bram.y-pet.y,d=pd||1;pet.x+=dx/d*Math.min(d-35,125*dt);pet.y+=dy/d*Math.min(d-35,125*dt);}petCd-=dt;if(petCd<=0){const target=mons.filter(m=>dist(m,pet)<55).sort((a,b)=>dist(a,pet)-dist(b,pet))[0];if(target){target.hp-=pet.atk;petCd=1.1;spawnBurst(target.x,target.y,3,"#b8f0c4");}}}
 
   // Sari: ikut Bram, pasang badan saat Bram lemah, dan tetap dalam radius dekat
   const nearMons = mons.filter(m => dist(m, bram) < 200).sort((a, b) => dist(a, bram) - dist(b, bram));
@@ -1134,6 +1176,7 @@ function draw() {
 
   // Portal Dungeon Kristal
   ctx.font='34px sans-serif';ctx.fillText(dungeonCleared?'🏆':'🌀',DUNGEON.x-cam.x,DUNGEON.y-cam.y);
+  ctx.font='27px sans-serif';ctx.fillText('🧑‍🌾',MERCHANT.x-cam.x,MERCHANT.y-cam.y);
   ctx.font='bold 10px sans-serif';ctx.fillStyle='#e7d8ff';ctx.fillText('DUNGEON',DUNGEON.x-cam.x,DUNGEON.y-cam.y+29);
   // Sumber daya
   for (const n of nodes) {
@@ -1163,6 +1206,7 @@ function draw() {
   ctx.font = '28px sans-serif';
   ctx.fillText('👧', sari.x - cam.x, sari.y - cam.y);
   ctx.fillText('🧑', bram.x - cam.x, bram.y - cam.y);
+  if(pet){ctx.font='27px sans-serif';ctx.fillText(pet.icon,pet.x-cam.x,pet.y-cam.y);}
   if (equip.weapon) { ctx.font = '20px sans-serif'; ctx.fillText(equip.weapon.icon, bram.x + 18 - cam.x, bram.y - 6 - cam.y); }
   if (equip.armor) { ctx.font = '18px sans-serif'; ctx.fillText(equip.armor.icon, bram.x - 18 - cam.x, bram.y + 8 - cam.y); }
 
@@ -1238,7 +1282,7 @@ function renderHud() {
   const xpNeed = bram.lvl * 25;
   setBar('nb-xp', bram.xp / xpNeed * 100);
   document.getElementById('nv-xp').textContent = `${bram.xp}/${xpNeed}`;
-  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · Sari companion (immortal)`;
+  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · Poin skill ${skillPoints} · ${pet?pet.name:'Tanpa peliharaan'}`;
 
   const ab = document.getElementById('btnAksi');
   ab.disabled = gameOver;
@@ -1248,6 +1292,8 @@ function renderHud() {
     `🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
 
   if (craftOpen) renderCraft();
+  if(document.getElementById("merchant").classList.contains("show"))renderMerchant();
+  if(document.getElementById("skills").classList.contains("show"))renderSkills();
   if (document.getElementById('build').classList.contains('show')) renderBuild();
   if (isTasOpen()) renderTas();
 }
