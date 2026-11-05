@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bram & Sari - Survival Evolution v2.2</title>
+<title>Bram & Sari - Survival Evolution v2.3</title>
 <style>
 :root{--bg:#0f1a14;--panel:#18271e;--ink:#e9f3ea;--mut:#9bb5a0;--line:#2c4534;--acc:#5fbf7a;--warn:#e5484d;color-scheme:dark}
 *{box-sizing:border-box}
@@ -127,7 +127,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Baloo
 <div id="craft" class="craft">
   <div class="craft-box">
     <h3>🔨 Meja Kerja</h3>
-    <div id="craftList"></div><div class="tas-sec">🔫 Upgrade senjata Bram</div><div id="gunUpgradeList"></div><div class="tas-sec">🧰 Amunisi</div><button class="rbtn" onclick="craftAmmo()">Buat 20 peluru <small>Butuh 3 kayu + 2 batu</small></button>
+    <div id="craftList"></div><div class="tas-sec">🔫 Upgrade senjata Bram</div><div id="gunUpgradeList"></div>
     <button class="craft-close" onclick="closeCraft()">Tutup</button>
   </div>
 </div>
@@ -288,7 +288,7 @@ let storage = { kayu:0, batu:0, kulit:0, inti:0, kristal:0, makanan:0, air:0, pe
 let towerClock = 0;
 let skillPoints = 0;
 let skills = {power:0,guard:0,scavenger:0};
-let pet = null, petCd = 0;
+let sariGatherCd=0;
 const MERCHANT = {x:CAMP.x+115,y:CAMP.y-85};
 let sariMemories = [];
 let dungeonActive = false, dungeonCleared = false;
@@ -456,7 +456,6 @@ function killMonster(m) {
     sariEvent(`${m.n} berhasil dikalahkan`);
     return;
   }
-  if(rnd()<0.18){inv.peluru=(inv.peluru||0)+5;log('🔸 Menemukan 5 peluru.');}
   if (m.elite && rnd() < 0.5) { inv.inti++; log('💎 Dapat 1 Inti.'); }
   if ((m.biome === 'forest' || m.biome === 'river') && rnd() < 0.4) { inv.kulit++; log('Dapat 1 Kulit.'); }
   if (rnd() < 0.3) { inv.makanan++; log('Dapat 1 Beri.'); }
@@ -481,7 +480,6 @@ function aksiTarget() {
   if (dist(bram, DUNGEON) < 105) return { type: dungeonCleared ? 'dungeonDone' : 'dungeon' };
   if (dist(bram, MERCHANT) < 85) return {type:'merchant'};
   const tameTarget=mons.filter(m=>!m.boss&&!m.elite&&['Serigala','Babi hutan'].includes(m.n)&&dist(m,bram)<65).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];
-  if (tameTarget && inv.makanan>0 && !pet) return {type:'tame',m:tameTarget};
   const m = mons.filter(x => dist(x, bram) < 300).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
   if (m) return { type: 'mon', m };
   const n = nodes.filter(x => x.cd <= 0 && dist(x, bram) < 70).sort((p, q) => dist(p, bram) - dist(q, bram))[0];
@@ -501,7 +499,6 @@ function aksiLabel() {
   if (t.type === 'mon') return 'Serang ' + t.m.n;
   if (t.type === 'dungeon') return 'Masuk Dungeon';
   if (t.type === 'merchant') return 'Bicara pedagang';
-  if (t.type === 'tame') return 'Jinakkan '+t.m.n;
   if (t.type === 'dungeonDone') return 'Dungeon selesai';
   if (t.type === 'node') return ACT_NAME[t.n.kind];
   if (t.type === 'air') return 'Ambil air';
@@ -517,7 +514,6 @@ function aksi() {
   if (t.type === 'mon') { atkTarget = t.m; log(`Bram menyerang ${t.m.n}!`); return; }
   if (t.type === 'dungeon') { spawnDungeonBoss(); return; }
   if (t.type === 'merchant') { openMerchant(); return; }
-  if (t.type === 'tame') { tameAnimal(t.m); return; }
   if (t.type === 'dungeonDone') { log('🏆 Dungeon Kristal sudah ditaklukkan.'); return; }
   if (t.type === 'bench') { openCraft(); return; }
   if (t.type === 'build') {
@@ -543,14 +539,6 @@ function aksi() {
   }
   gather = { t: NODE[t.n.kind].t, kind: t.n.kind, node: t.n };
   log(`Mulai ${ACT_NAME[t.n.kind].toLowerCase()}...`);
-}
-
-function tameAnimal(m) {
-  if (pet || inv.makanan<=0 || !mons.includes(m)) return;
-  inv.makanan--; mons=mons.filter(x=>x!==m);
-  pet={name:m.n,icon:m.n==='Serigala'?'🐺':'🐗',hp:100,maxHp:100,atk:m.n==='Serigala'?8:5,x:m.x,y:m.y};
-  log('🐾 '+pet.name+' berhasil dijinakkan dan menjadi teman!');
-  sariEvent('Bram menjinakkan '+pet.name+' sebagai hewan peliharaan');renderHud();
 }
 
 function finishGather() {
@@ -702,7 +690,6 @@ function renderTas() {
     <div class="tas-row"><span>⚔️ Petarung</span><span>${skills.power}</span></div>
     <div class="tas-row"><span>🛡️ Tangguh</span><span>${skills.guard}</span></div>
     <div class="tas-row"><span>🪓 Pengumpul</span><span>${skills.scavenger}</span></div>
-    <div class="tas-row"><span>🐾 Peliharaan</span><span>${pet?pet.icon+" "+pet.name:"Belum ada"}</span></div>
     <div class="tas-sec">🧠 Ingatan Sari</div>
     ${sariMemories.length ? sariMemories.slice(-5).map(x=>'<div class="memory-note">• '+x+'</div>').join('') : '<div class="memory-note">Belum ada kenangan petualangan.</div>'}
     <div class="tas-sec">Inventaris</div>
@@ -857,7 +844,7 @@ function saveGame(showMessage=false) {
   try {
     const data = {
       day,dayTime,bram,sari,needs,inv,equip,bench,benchLvl,mons,nodes,
-      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,skillPoints,skills,pet,gun,worldRndState:'fixed'
+      bossTimer,fireLeft,quest,weather,buildings,storage,sariMemories,dungeonActive,dungeonCleared,skillPoints,skills,gun,worldRndState:'fixed'
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     if(showMessage) log('💾 Progres berhasil disimpan di perangkat.');
@@ -886,7 +873,7 @@ function loadGame(showMessage=false) {
     if(d.storage) Object.assign(storage,d.storage);
     if(Array.isArray(d.sariMemories)) sariMemories=d.sariMemories.slice(-8);
     dungeonActive=!!d.dungeonActive;dungeonCleared=!!d.dungeonCleared;
-    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);pet=d.pet||null;if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};if(typeof inv.peluru!=='number')inv.peluru=60;inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
+    skillPoints=d.skillPoints||0;if(d.skills)Object.assign(skills,d.skills);if(d.gun&&GUNS.some(g=>g.id===d.gun.id))gun={...GUNS.find(g=>g.id===d.gun.id)};else gun={...GUNS[0]};inv.koin=inv.koin||0;equip.weapon=null;bullets=[];fireZones=[];
     gameOver=false;document.getElementById('over').style.display='none';
     if(showMessage) log('📂 Progres berhasil dimuat.');
     renderHud();renderQuest();return true;
@@ -939,36 +926,10 @@ function update(dt) {
   if (craftOpen && dist(bram, CAMP) >= CAMP_R) closeCraft();
   if(document.getElementById("merchant").classList.contains("show")&&dist(bram,MERCHANT)>140)closeMerchant();
 
-  // Hewan peliharaan mengikuti Bram dan menyerang monster terdekat
-  if(pet){const pd=dist(pet,bram);if(pd>42){const dx=bram.x-pet.x,dy=bram.y-pet.y,d=pd||1;pet.x+=dx/d*Math.min(d-35,125*dt);pet.y+=dy/d*Math.min(d-35,125*dt);}petCd-=dt;if(petCd<=0){const target=mons.filter(m=>dist(m,pet)<55).sort((a,b)=>dist(a,pet)-dist(b,pet))[0];if(target){target.hp-=pet.atk;petCd=1.1;spawnBurst(target.x,target.y,3,"#b8f0c4");}}}
-
-  // Sari: ikut Bram, pasang badan saat Bram lemah, dan tetap dalam radius dekat
-  const nearMons = mons.filter(m => dist(m, bram) < 200).sort((a, b) => dist(a, bram) - dist(b, bram));
-  const engaged = nearMons[0] || null;
-  let goX = bram.x + 40, goY = bram.y - 20;
-  if (engaged && dist(engaged, bram) < 220) {
-    if (bram.hp < 50) {
-      // Berdiri di antara Bram dan monster terdekat
-      const dx = engaged.x - bram.x, dy = engaged.y - bram.y, d = Math.hypot(dx, dy) || 1;
-      const k = Math.min(d, 60) / d;
-      goX = bram.x + dx * k;
-      goY = bram.y + dy * k;
-    } else {
-      goX = engaged.x;
-      goY = engaged.y;
-    }
-  }
-  const gdx = goX - sari.x, gdy = goY - sari.y, gd = Math.hypot(gdx, gdy);
-  if (gd > 36) {
-    const step = Math.min(gd, 110 * dt);
-    sari.x += gdx / gd * step;
-    sari.y += gdy / gd * step;
-  }
-  if (dist(sari, bram) > 240) {
-    const sx = bram.x - sari.x, sy = bram.y - sari.y, sd = Math.hypot(sx, sy) || 1;
-    sari.x += sx / sd * Math.min(sd - 200, 200 * dt);
-    sari.y += sy / sd * Math.min(sd - 200, 200 * dt);
-  }
+  // Sari selalu menemani Bram dalam jarak dekat, tanpa mengejar monster.
+  const goX=bram.x+38,goY=bram.y-24,gdx=goX-sari.x,gdy=goY-sari.y,gd=Math.hypot(gdx,gdy);
+  if(gd>28){const step=Math.min(gd,145*dt);sari.x+=gdx/gd*step;sari.y+=gdy/gd*step;}
+  if(dist(sari,bram)>105){const sx=bram.x-sari.x,sy=bram.y-sari.y,sd=Math.hypot(sx,sy)||1;sari.x+=sx/sd*Math.min(sd-75,240*dt);sari.y+=sy/sd*Math.min(sd-75,240*dt);}
 
   // Taunt: saat Bram lemah, monster di dekat Sari beralih mengincar Sari
   const taunting = bram.hp < 35;
@@ -1013,7 +974,7 @@ function update(dt) {
 
   // Senjata api Bram menembak otomatis ke monster terdekat dalam jangkauan.
   gunCd=Math.max(0,gunCd-dt);const gt=mons.filter(m=>dist(m,bram)<=gun.range).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];
-  if(gt&&gunCd<=0&&(inv.peluru||0)>0){inv.peluru--;gunCd=gun.rate;bullets.push({x:bram.x,y:bram.y,target:gt,damage:gun.damage+skills.power*2,speed:520});}
+  if(gt&&gunCd<=0){gunCd=gun.rate;bullets.push({x:bram.x,y:bram.y,target:gt,damage:gun.damage+skills.power*2,speed:520});}
   for(const b of bullets){if(!mons.includes(b.target)){b.dead=true;continue;}const dx=b.target.x-b.x,dy=b.target.y-b.y,d=Math.hypot(dx,dy)||1,step=Math.min(d,b.speed*dt);b.x+=dx/d*step;b.y+=dy/d*step;if(d<12){b.target.hp-=b.damage;b.dead=true;spawnBurst(b.x,b.y,3,'#ffe08a');}}bullets=bullets.filter(b=>!b.dead);
   // Sari melontarkan Molotov otomatis dengan cooldown 7 detik.
   sariMolotovCd-=dt;if(sariMolotovCd<=0){const st=mons.filter(m=>dist(m,sari)<300).sort((a,b)=>dist(a,sari)-dist(b,sari))[0];if(st){fireZones.push({x:st.x,y:st.y,r:76,life:4,tick:0});spawnBurst(st.x,st.y,18,'#ff8b32');log('💣 Sari melempar Molotov!');sariEvent('Sari melempar bom Molotov ke monster');sariMolotovCd=7;}else sariMolotovCd=.5;}
@@ -1045,8 +1006,10 @@ function update(dt) {
   if (!nearNow.length) flags.nearAlert = false;
   if (nearNow.length >= 3 && Date.now() - lastCrowd > 15000) { lastCrowd = Date.now(); sariEvent('banyak monster mengepung'); }
 
-  // Ambil sumber daya
+  // Ambil sumber daya: Sari otomatis memungut node dalam radius dekat Bram.
   for (const n of nodes) if (n.cd > 0) n.cd -= dt;
+  sariGatherCd=Math.max(0,sariGatherCd-dt);
+  if(sariGatherCd<=0&&!gameOver){const nearbyNode=nodes.filter(n=>n.cd<=0&&dist(n,bram)<=88).sort((a,b)=>dist(a,bram)-dist(b,bram))[0];if(nearbyNode){gather={t:0,kind:nearbyNode.kind,node:nearbyNode};finishGather();sariGatherCd=1.15;sariEvent('Sari mengambil '+(nearbyNode.kind==='tree'?'kayu':nearbyNode.kind==='bush'?'beri':nearbyNode.kind==='rock'?'batu':nearbyNode.kind==='crystal'?'kristal':'isi peti')+' di dekat Bram');}}
   if (gather.t > 0) {
     if (nearbyMonsters(bram, 150).length) {
       gather = { t: 0, kind: null, node: null };
@@ -1198,7 +1161,6 @@ function draw() {
   ctx.font = '28px sans-serif';
   ctx.fillText('👧', sari.x - cam.x, sari.y - cam.y);
   ctx.fillText('🧑', bram.x - cam.x, bram.y - cam.y);
-  if(pet){ctx.font='27px sans-serif';ctx.fillText(pet.icon,pet.x-cam.x,pet.y-cam.y);}
   ctx.font='20px sans-serif';ctx.fillText(gun.icon,bram.x+18-cam.x,bram.y-6-cam.y);
   if (equip.armor) { ctx.font = '18px sans-serif'; ctx.fillText(equip.armor.icon, bram.x - 18 - cam.x, bram.y + 8 - cam.y); }
 
@@ -1274,14 +1236,14 @@ function renderHud() {
   const xpNeed = bram.lvl * 25;
   setBar('nb-xp', bram.xp / xpNeed * 100);
   document.getElementById('nv-xp').textContent = `${bram.xp}/${xpNeed}`;
-  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · ${gun.name} · 🔸 ${inv.peluru||0} · Poin skill ${skillPoints} · ${pet?pet.name:'Tanpa peliharaan'}`;
+  document.getElementById('lvlTxt').textContent = `Bram Lv ${bram.lvl} · ${gun.name} · 🔫 Peluru unlimited · Poin skill ${skillPoints}`;
 
   const ab = document.getElementById('btnAksi');
   ab.disabled = gameOver;
   document.getElementById('aksiTxt').textContent = gather.t > 0 ? `${gather.t.toFixed(1)}s` : aksiLabel();
 
   document.getElementById('inv').textContent =
-    `🔫 ${gun.name} · 🔸 ${inv.peluru||0} peluru · 🪙 ${inv.koin||0} · 🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
+    `🔫 ${gun.name} · ♾️ Peluru · 🪙 ${inv.koin||0} · 🪵 ${inv.kayu} · 🪨 ${inv.batu} · 🦊 ${inv.kulit} · 💎 ${inv.inti} · ✨ ${inv.kristal||0} · 🫐 ${inv.makanan} · 💧 ${inv.air} · 🩹 ${inv.perban}`;
 
   if (craftOpen) renderCraft();
   if(document.getElementById("merchant").classList.contains("show"))renderMerchant();
